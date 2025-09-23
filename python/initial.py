@@ -2,8 +2,8 @@ import pandas as pd
 import os
 import urllib.request
 
-metadata = pd.read_csv('/home/martinalavanya/Documents/ETH/mls_semesterprojekt/data/gtex.gtex.BRAIN.MD', delimiter='\t')
-urldata = pd.read_csv('/home/martinalavanya/Documents/ETH/mls_semesterprojekt/data/recount3_BigWig_list_BRAIN_URLs.csv', index_col = False)
+metadata = pd.read_csv('../data/gtex.gtex.BRAIN.MD', delimiter='\t')
+urldata = pd.read_csv('../data/recount3_BigWig_list_BRAIN_URLs.csv', index_col = False)
 
 print(metadata.head())
 print(metadata.shape)
@@ -36,5 +36,5 @@ for file in all_files:
 	# print(target)
 	# print(target['BigWigURL'].shape)
 	# print(target['BigWigURL'].item())
-	os.system(f'wget {target['BigWigURL'].item()} -P /home/martinalavanya/Documents/ETH/mls_semesterprojekt/data/preprocessing')
+	os.system(f'wget {target['BigWigURL'].item()} -P ../data/preprocessing')
 	#break
