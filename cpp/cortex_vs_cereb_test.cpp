@@ -16,13 +16,13 @@ struct BedGraphRow
     int start;
     int end;
     double coverage;
-    double avg = 0;
+    //double avg = 0;
     int total_reads = 0;
     // add optional values for average coverage, DER identifier
 };
 
 // fill vector with coverage value per bp (since different bedgraphs have different binning intervals)
-void compute_per_base_coverage(const BedGraphRow row, std::vector<double>& per_base_coverage)
+void compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage)
 {
     // row.end is NOT inclusive
     int position = row.end - row.start; //for just one nt, row.start = 22, row.end = 23 -> position = 1
@@ -94,27 +94,33 @@ bool in_interval(double current_avg, double bp_coverage)
 }
 
 // use a window average to find DERs
-void find_DERs(const std::vector<double>& per_base_coverage, const std::vector<double>& avg_coverage)
+void find_DERs(const std::vector<double>& avg_coverage)
 {
-    assert(per_base_coverage.size() == avg_coverage.size());
+
     std::vector<BedGraphRow> results;
 
-    int current_region = 1; //index of the DER
-    double current_avg = 0;
+
     int start = 0;
+    double current_avg = 0;
     //int end = 1;
 
-    for (int i = 0; i < per_base_coverage.size(); i++)
+    for (int i = 0; i < avg_coverage.size(); i++)
     {
-        // DER has ended (either to few reads or too different from current average)
-        if ((per_base_coverage[i] <= 5) || !(in_interval(per_base_coverage[i], avg_coverage[i])))
+        // coverage of less than 5 but region is at least 5 bp long
+        if (avg_coverage[i] <= 5 && ((i - start) > 5))
         {
-            results.push_back(BedGraphRow{"chr19", start, i - 1, per_base_coverage[i], current_avg});
-        }
+            current_avg /= (i - 1 - start);
+            results.push_back(BedGraphRow{"chr19", start, i - 1, current_avg});
+            current_avg = 0;
 
-        else
+        }
+        else if (avg_coverage[i] > 5)
         {
-            start = i;
+            if (current_avg == 0)
+            {
+                start = i;
+            }
+            current_avg += avg_coverage[i];
         }
     }
 }
@@ -134,9 +140,11 @@ int main() {
         std::vector<BedGraphRow> bedgraph;
         std::vector<double> per_base_coverage;
         read_file(entry.path().string(), per_base_coverage, bedgraph);
+        std::cout << "here";
         all_bedgraphs.push_back(bedgraph);
         all_per_base_coverages.push_back(per_base_coverage);
     }
+    std::cout << "here";
     // compute average coverage per read
     std::vector<double> avg_coverage = compute_avg_coverage(all_per_base_coverages);
 
