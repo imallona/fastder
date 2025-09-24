@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <cassert>
 
 // custom struct for BedGraph
 struct BedGraphRow
@@ -15,6 +16,7 @@ struct BedGraphRow
     int start;
     int end;
     double coverage;
+    double avg = 0;
     int total_reads = 0;
     // add optional values for average coverage, DER identifier
 };
@@ -84,6 +86,38 @@ std::vector<double> compute_avg_coverage(const std::vector<std::vector<double>>&
     return avg_coverage;
 }
 
+// returns true if (1 - tolerance) * 10 <= bp_coverage <= (1 + tolerance) * 10 == 8 <= bp_coverage <= 12 for tolerance = 0.2
+bool in_interval(double current_avg, double bp_coverage)
+{
+    // tolerance of +/- 20 %
+    return bp_coverage >= 0.8 * current_avg && bp_coverage <= 1.2 * current_avg;
+}
+
+// use a window average to find DERs
+void find_DERs(const std::vector<double>& per_base_coverage, const std::vector<double>& avg_coverage)
+{
+    assert(per_base_coverage.size() == avg_coverage.size());
+    std::vector<BedGraphRow> results;
+
+    int current_region = 1; //index of the DER
+    double current_avg = 0;
+    int start = 0;
+    //int end = 1;
+
+    for (int i = 0; i < per_base_coverage.size(); i++)
+    {
+        // DER has ended (either to few reads or too different from current average)
+        if ((per_base_coverage[i] <= 5) || !(in_interval(per_base_coverage[i], avg_coverage[i])))
+        {
+            results.push_back(BedGraphRow{"chr19", start, i - 1, per_base_coverage[i], current_avg});
+        }
+
+        else
+        {
+            start = i;
+        }
+    }
+}
 int main() {
     std::string path = "../data/preprocessing";
     //std::cin >> path; //for later
