@@ -42,11 +42,15 @@ void compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_
 }
 //normalize reads to CPM for better comparability between libraries
 //arguments: vector containing per-base coverage of one sample
-void normalize(std::vector<double>& per_base_coverage, double total_reads)
+void normalize(std::vector<double>& per_base_coverage, const int library_size)
 {
     for (double& e : per_base_coverage)
     {
-        e = (e / total_reads) * 1e6; //normalize to CPM
+        e = (e / library_size) * 1e6; //normalize to CPM
+        // if (e > 1)
+        // {
+        //     std::cout << e << std::endl;
+        // }
     }
 }
 
@@ -90,6 +94,9 @@ int read_file(const std::string filename,
 std::vector<double> compute_avg_coverage(const std::vector<std::vector<double>>& all_per_base_coverages)
 {
     std::vector<double> avg_coverage(all_per_base_coverages[0].size());
+    //iterate
+    std::cout << all_per_base_coverages.size() << "outer dim, inner dim = "<< all_per_base_coverages[1].size() << std::endl;
+    //outer loop iterates over
     for (int i = 0; i < all_per_base_coverages.size(); i++)
     {
         double sum = 0;
@@ -98,6 +105,7 @@ std::vector<double> compute_avg_coverage(const std::vector<std::vector<double>>&
             sum += j;
         }
         avg_coverage[i] = sum / all_per_base_coverages.size(); // (#nof reads at bp i) / (#nof samples)
+        //std::cout << avg_coverage[i] << "\t" << all_per_base_coverages[0][i] << std::endl;
     }
     return avg_coverage;
 }
@@ -110,36 +118,46 @@ bool in_interval(double current_avg, double bp_coverage)
 }
 
 // use a window average to find DERs
-void find_DERs(const std::vector<double>& avg_coverage)
+std::vector<BedGraphRow> find_DERs(const std::vector<double>& avg_coverage)
 {
 
     std::vector<BedGraphRow> results;
-
-
     int start = 0;
     double current_avg = 0;
     //int end = 1;
 
+    //if length > 5 and coverage at bp < 5 -> DER has ended, append
+    // if coverage at bp > 5 --> add to current DER
+    // if coverage < 5 && length < 5: don't count as DER, reset start and average
+
     for (int i = 0; i < avg_coverage.size(); i++)
     {
-        // coverage of less than 5 but region is at least 5 bp long
-        if (avg_coverage[i] <= 5 && ((i - start) > 5))
+        // coverage of less than 5
+        if (avg_coverage[i] <=0.25 )
         {
-            current_avg /= (i - 1 - start);
-            results.push_back(BedGraphRow{"chr19", start, i - 1, current_avg});
+            // region at least 5 bp long, append to results
+            if ((i - start) > 5)
+            {
+                current_avg /= (i - 1 - start);
+                BedGraphRow der = {"chr19", start, i - 1, current_avg};
+                der.print();
+                results.push_back(der);
+
+            }
+            //region too short to be appended, reset start and current avg
+            start = i + 1;
             current_avg = 0;
 
         }
-        else if (avg_coverage[i] > 5)
+        // add to current DER
+        else if (avg_coverage[i] > 0.25)
         {
-            if (current_avg == 0)
-            {
-                start = i;
-            }
             current_avg += avg_coverage[i];
         }
     }
+    return results;
 }
+
 int main() {
     std::string path = "../data/preprocessing";
     //std::cin >> path; //for later
@@ -169,18 +187,26 @@ int main() {
     std::vector<double> avg_coverage = compute_avg_coverage(all_per_base_coverages);
 
     // find DERs
+    std::vector<BedGraphRow> results = find_DERs(avg_coverage);
+
+    std::cout << results.size() << std::endl;
+    std::cout << "here" << std::endl;
+    // for (auto & result : results)
+    // {
+    //     result.print();
+    // }
 
     //check dimensions with print statements
     std::cout << all_bedgraphs.size() << std::endl;
     std::cout << all_bedgraphs[0].size()<< std::endl;
     std::cout << all_bedgraphs[1].size()<< std::endl;
-    for (int i = 0; i < 10; ++i)
-    {
-        for (int j = 0; j < 10; ++j)
-        {
-            all_bedgraphs[i][j].print();
-        }
-    }
+    // for (int i = 0; i < 10; ++i)
+    // {
+    //     for (int j = 0; j < 10; ++j)
+    //     {
+    //         std::cout << all_per_base_coverages[i][j] << std::endl;
+    //     }
+    // }
 
     std::cout << all_per_base_coverages.size() << std::endl;
     std::cout << all_per_base_coverages[0].size() << std::endl;
