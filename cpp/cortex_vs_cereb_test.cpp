@@ -19,6 +19,12 @@ struct BedGraphRow
     //double avg = 0;
     int total_reads = 0;
     // add optional values for average coverage, DER identifier
+
+    //print BedGraphRow
+    void print()
+    {
+        std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads << std::endl;
+    }
 };
 
 // fill vector with coverage value per bp (since different bedgraphs have different binning intervals)
@@ -35,6 +41,7 @@ void compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_
 
 }
 //normalize reads to CPM for better comparability between libraries
+//arguments: vector containing per-base coverage of one sample
 void normalize(std::vector<double>& per_base_coverage, double total_reads)
 {
     for (double& e : per_base_coverage)
@@ -44,7 +51,8 @@ void normalize(std::vector<double>& per_base_coverage, double total_reads)
 }
 
 //read in a .bedgraph file and fill the per_base_coverage and data vectors
-void read_file(const std::string filename,
+//return library size of this sample file
+int read_file(const std::string filename,
     std::vector<double>& per_base_coverage,
     std::vector<BedGraphRow>& data)
 {
@@ -52,7 +60,12 @@ void read_file(const std::string filename,
     std::cout << filename << std::endl;
     //read in file from path
     std::ifstream file(filename);
+    if (!file.is_open())
+    {
+        std::cerr << "Error opening file " << filename << std::endl;
+    }
     std::string line;
+    int library_size = 0;
     // iterate over lines
     while (std::getline(file, line))
     {
@@ -60,13 +73,16 @@ void read_file(const std::string filename,
         std::istringstream iss(line);
         BedGraphRow row;
         iss >> row.chrom >> row.start >> row.end >> row.coverage;
+        // calculate total number of reads that map to this bp interval
         row.total_reads += (row.end - row.start) * (row.coverage); //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
+        library_size += row.total_reads;
+        //row.print();
         compute_per_base_coverage(row, per_base_coverage);
         data.push_back(row);
-
-        // normalize read counts
-        normalize(per_base_coverage, row.total_reads);
     }
+
+    //return library size
+    return library_size;
 
 }
 
@@ -134,17 +150,21 @@ int main() {
     std::vector<std::vector<BedGraphRow>> all_bedgraphs;
     std::vector<std::vector<double>> all_per_base_coverages;
 
-    //read in files
+    //read in every sample file and create per-base coverage file
     for (const auto & entry : std::filesystem::directory_iterator(path))
     {
         std::vector<BedGraphRow> bedgraph;
         std::vector<double> per_base_coverage;
-        read_file(entry.path().string(), per_base_coverage, bedgraph);
-        std::cout << "here";
+        int library_size = read_file(entry.path().string(), per_base_coverage, bedgraph);
+
+        // normalize read counts
+        normalize(per_base_coverage, library_size);
+
+        // add to matrix
         all_bedgraphs.push_back(bedgraph);
         all_per_base_coverages.push_back(per_base_coverage);
     }
-    std::cout << "here";
+
     // compute average coverage per read
     std::vector<double> avg_coverage = compute_avg_coverage(all_per_base_coverages);
 
@@ -154,6 +174,14 @@ int main() {
     std::cout << all_bedgraphs.size() << std::endl;
     std::cout << all_bedgraphs[0].size()<< std::endl;
     std::cout << all_bedgraphs[1].size()<< std::endl;
+    for (int i = 0; i < 10; ++i)
+    {
+        for (int j = 0; j < 10; ++j)
+        {
+            all_bedgraphs[i][j].print();
+        }
+    }
+
     std::cout << all_per_base_coverages.size() << std::endl;
     std::cout << all_per_base_coverages[0].size() << std::endl;
     std::cout << all_per_base_coverages[1].size() << std::endl;
