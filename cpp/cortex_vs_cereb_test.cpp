@@ -18,12 +18,13 @@ struct BedGraphRow
     double coverage;
     //double avg = 0;
     int total_reads = 0;
+    int length = 0;
     // add optional values for average coverage, DER identifier
 
     //print BedGraphRow
     void print()
     {
-        std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads << std::endl;
+        std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads <<  "\t" << length << std::endl;
     }
 };
 
@@ -47,10 +48,6 @@ void normalize(std::vector<double>& per_base_coverage, const int library_size)
     for (double& e : per_base_coverage)
     {
         e = (e / library_size) * 1e6; //normalize to CPM
-        // if (e > 1)
-        // {
-        //     std::cout << e << std::endl;
-        // }
     }
 }
 
@@ -96,16 +93,16 @@ std::vector<double> compute_avg_coverage(const std::vector<std::vector<double>>&
     std::vector<double> avg_coverage(all_per_base_coverages[0].size());
     //iterate
     std::cout << all_per_base_coverages.size() << "outer dim, inner dim = "<< all_per_base_coverages[1].size() << std::endl;
-    //outer loop iterates over
-    for (int i = 0; i < all_per_base_coverages.size(); i++)
+    //outer loop iterates over each position in each sample
+    for (int i = 0; i < all_per_base_coverages[0].size(); i++)
     {
         double sum = 0;
-        for (const double j : all_per_base_coverages[i])
+        // inner loop iterates over each sample to get average of one position across samples
+        for (int j = 0; j < all_per_base_coverages.size(); j++)
         {
-            sum += j;
+            sum += all_per_base_coverages[j][i]; //sample j, position i
         }
         avg_coverage[i] = sum / all_per_base_coverages.size(); // (#nof reads at bp i) / (#nof samples)
-        //std::cout << avg_coverage[i] << "\t" << all_per_base_coverages[0][i] << std::endl;
     }
     return avg_coverage;
 }
@@ -140,6 +137,7 @@ std::vector<BedGraphRow> find_DERs(const std::vector<double>& avg_coverage)
             {
                 current_avg /= (i - 1 - start);
                 BedGraphRow der = {"chr19", start, i - 1, current_avg};
+                der.length = (i - 1 - start);
                 der.print();
                 results.push_back(der);
 
@@ -185,6 +183,18 @@ int main() {
 
     // compute average coverage per read
     std::vector<double> avg_coverage = compute_avg_coverage(all_per_base_coverages);
+    //int count = 0;
+    // for (int i = 0; i < avg_coverage.size(); ++i)
+    // {
+    //     if (avg_coverage[i] > 0.25)
+    //     {
+    //         std::cout << avg_coverage[i] << std::endl;
+    //         ++count;
+    //     }
+    //
+    //
+    // }
+    // std::cout << count << std::endl; // 795778 positions have activity > 0.25
 
     // find DERs
     std::vector<BedGraphRow> results = find_DERs(avg_coverage);
