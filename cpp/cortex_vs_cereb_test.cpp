@@ -7,9 +7,10 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <unordered_map>
 #include <cassert>
 
-// custom struct for BedGraph
+// struct to store BedGraph
 struct BedGraphRow
 {
     std::string chrom;
@@ -22,11 +23,45 @@ struct BedGraphRow
     // add optional values for average coverage, DER identifier
 
     //print BedGraphRow
-    void print()
+    void print() const
     {
         std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads <<  "\t" << length << std::endl;
     }
+
 };
+
+// struct to store exon-exon junctions coordinate information from RR file
+struct SJRow
+{
+    std::string chrom;
+    int start;
+    int end;
+    int length;
+    bool strand; // 1 = +, 0 = -
+    bool annotated;
+    std::string left_motif;
+    std::string right_motif;
+    std::string  left_annotated;
+    std::string  right_annotated;
+
+};
+// overload input operator for SJRow
+std::istream& operator>> (std::istream& is, SJRow& row)
+{
+    char annotated;
+    is >> row.chrom >> row.start >> row.end >> row.length >> row.strand >> annotated >> row.left_motif
+    >> row.right_motif >> row.left_annotated >> row.right_annotated;
+    row.annotated = (annotated == '+'); // 1 if +
+    return is;
+}
+
+// overload output operator for SJRow
+std::ostream& operator<< (std::ostream& os, SJRow& row)
+{
+    return os << row.chrom << "\t" << row.start << "\t" << row.end << "\t" << row.length << "\t" << row.strand << "\t" <<
+        row.annotated << "\t" <<row.left_motif << "\t" << row.right_motif << "\t" << row.left_annotated << "\t" << row.right_annotated;
+
+}
 
 // fill vector with coverage value per bp (since different bedgraphs have different binning intervals)
 void compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage)
@@ -87,6 +122,39 @@ int read_file(const std::string filename,
 
 }
 
+// read rr file
+void read_rr(const std::string filename,
+    std::vector<SJRow>& sample_rr)
+{
+
+    std::cout << filename << std::endl;
+    //read in file from path
+    std::ifstream file(filename);
+    if (!file.is_open())
+    {
+        std::cerr << "Error opening file " << filename << std::endl;
+    }
+    std::string line;
+
+    // iterate over lines
+    while (std::getline(file, line))
+    {
+        // read in line by line
+        std::istringstream iss(line);
+        SJRow row = {};
+        iss >> row;
+        if (!row.left_annotated.empty())
+        {
+            std::cout << row << std::endl;
+        }
+
+        sample_rr.push_back(row);
+    }
+
+
+}
+
+
 //compute overall average coverage
 std::vector<double> compute_avg_coverage(const std::vector<std::vector<double>>& all_per_base_coverages)
 {
@@ -114,8 +182,8 @@ bool in_interval(double current_avg, double bp_coverage)
     return bp_coverage >= 0.8 * current_avg && bp_coverage <= 1.2 * current_avg;
 }
 
-// use a window average to find DERs
-std::vector<BedGraphRow> find_DERs(const std::vector<double>& avg_coverage)
+// identify ERs with coverage > 0.25 and length > 5 bp
+std::vector<BedGraphRow> find_ERs(const std::vector<double>& avg_coverage)
 {
 
     std::vector<BedGraphRow> results;
@@ -123,9 +191,9 @@ std::vector<BedGraphRow> find_DERs(const std::vector<double>& avg_coverage)
     double current_avg = 0;
     //int end = 1;
 
-    //if length > 5 and coverage at bp < 5 -> DER has ended, append
-    // if coverage at bp > 5 --> add to current DER
-    // if coverage < 5 && length < 5: don't count as DER, reset start and average
+    //if length > 5 and coverage at bp < 5 -> ER has ended, append
+    // if coverage at bp > 5 --> add to current ER
+    // if coverage < 5 && length < 5: don't count as ER, reset start and average
 
     for (int i = 0; i < avg_coverage.size(); i++)
     {
@@ -138,7 +206,7 @@ std::vector<BedGraphRow> find_DERs(const std::vector<double>& avg_coverage)
                 current_avg /= (i - 1 - start);
                 BedGraphRow der = {"chr19", start, i - 1, current_avg};
                 der.length = (i - 1 - start);
-                der.print();
+                //der.print();
                 results.push_back(der);
 
             }
@@ -147,7 +215,7 @@ std::vector<BedGraphRow> find_DERs(const std::vector<double>& avg_coverage)
             current_avg = 0;
 
         }
-        // add to current DER
+        // add to current ER
         else if (avg_coverage[i] > 0.25)
         {
             current_avg += avg_coverage[i];
@@ -157,7 +225,8 @@ std::vector<BedGraphRow> find_DERs(const std::vector<double>& avg_coverage)
 }
 
 int main() {
-    std::string path = "../data/preprocessing";
+    std::string bigwig_path = "../data/preprocessing";
+    std::string rr_path = "../data/splice_junctions/gtex.junctions.BRAIN.ALL.RR";
     //std::cin >> path; //for later
 
     // matrix consisting of multiple vectors, where each row in a vector is of type BedGraphRow
@@ -167,7 +236,7 @@ int main() {
     std::vector<std::vector<double>> all_per_base_coverages;
 
     //read in every sample file and create per-base coverage file
-    for (const auto & entry : std::filesystem::directory_iterator(path))
+    for (const auto & entry : std::filesystem::directory_iterator(bigwig_path))
     {
         std::vector<BedGraphRow> bedgraph;
         std::vector<double> per_base_coverage;
@@ -180,6 +249,15 @@ int main() {
         all_bedgraphs.push_back(bedgraph);
         all_per_base_coverages.push_back(per_base_coverage);
     }
+
+    // for each study, group the MM file by sample id and store in unordered map (faster lookup, and order is irrelevant)
+    std::unordered_map<std::string, std::vector<BedGraphRow>> sjs_per_sample; //for each sample id, store start, end
+    std::vector<SJRow> sample_rr;
+
+    read_rr(rr_path, sample_rr);
+
+
+
 
     // compute average coverage per read
     std::vector<double> avg_coverage = compute_avg_coverage(all_per_base_coverages);
@@ -197,7 +275,7 @@ int main() {
     // std::cout << count << std::endl; // 795778 positions have activity > 0.25
 
     // find DERs
-    std::vector<BedGraphRow> results = find_DERs(avg_coverage);
+    std::vector<BedGraphRow> results = find_ERs(avg_coverage);
 
     std::cout << results.size() << std::endl;
     std::cout << "here" << std::endl;
