@@ -7,11 +7,11 @@
     
     struct stitchedER
 {
-    std::vector<int> er_ids; //map to index of results
+    std::vector<unsigned int> er_ids; //map to index of results
     double across_er_coverage; // avg (weighted) coverage of the stitched ER so far
     std::vector<pair<int, double>> all_coverages; // stores a pair of er length (= weight) + normalized average coverage of the er
-    int total_reads = 0;
-    int length = 0;
+    unsigned int total_reads = 0;
+    unsigned int length = 0;
     // add optional values for average coverage, DER identifier
 
     // print BedGraphRow
@@ -22,7 +22,7 @@
     // later change to add weight / memory
     double get_avg_coverage(){
       double sum = 0;
-      int total_length = 0;
+      unsigned int total_length = 0;
       for (auto er : this->all_coverages){
         sum += er.first() * er.second(); // weighted sum of avg coverages across ERs
         total_length += er.second();
@@ -47,7 +47,7 @@
     // iterate over expressed regions, start at ER 2
     // check for each ER if it could belong to the most recent (stitched) ERs by checking if
     //
-    for (int i = 1; i < results.size(); ++i){
+    for (unsigned int i = 1; i < results.size(); ++i){
       BedGraphRow& er = results[i];
       StitchedER& most_recent_er = stitched_ers.last(); //reference!
       // check if the current expressed region end coordinate somewhat matches a splice junction

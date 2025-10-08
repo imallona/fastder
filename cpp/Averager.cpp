@@ -20,6 +20,7 @@ void Averager::compute_per_base_coverage(const BedGraphRow& row, std::vector<dou
 {
     // row.end is NOT inclusive
     int position = row.end - row.start; //for just one nt, row.start = 22, row.end = 23 -> position = 1
+    assert(position >= 0);
     do
     {
         per_base_coverage.push_back(row.coverage);
@@ -30,7 +31,7 @@ void Averager::compute_per_base_coverage(const BedGraphRow& row, std::vector<dou
 }
 //normalize reads to CPM for better comparability between libraries
 //arguments: vector containing per-base coverage of one sample
-void Averager::normalize(std::vector<double>& per_base_coverage, const int library_size)
+void Averager::normalize(std::vector<double>& per_base_coverage, const unsigned int library_size)
 {
     for (double& e : per_base_coverage)
     {
@@ -114,11 +115,11 @@ std::vector<double> Averager::compute_avg_coverage()
     //iterate
     std::cout << all_per_base_coverages.size() << "outer dim, inner dim = "<< all_per_base_coverages[1].size() << std::endl;
     //outer loop iterates over each position in each sample
-    for (int i = 0; i < all_per_base_coverages[0].size(); i++)
+    for (unsigned int i = 0; i < all_per_base_coverages[0].size(); i++)
     {
         double sum = 0;
         // inner loop iterates over each sample to get average of one position across samples
-        for (int j = 0; j < all_per_base_coverages.size(); j++)
+        for (unsigned int j = 0; j < all_per_base_coverages.size(); j++)
         {
             sum += all_per_base_coverages[j][i]; //sample j, position i
         }

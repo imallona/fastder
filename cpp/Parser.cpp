@@ -28,7 +28,7 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename)
         std::cerr << "Error opening .bedgraph file " << filename << std::endl;
     }
     std::string line;
-    int library_size = 0;
+    unsigned int library_size = 0;
     // iterate over lines
     while (std::getline(file, line))
     {
@@ -37,9 +37,9 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename)
         BedGraphRow row;
         iss >> row.chrom >> row.start >> row.end >> row.coverage;
         // calculate total number of reads that map to this bp interval
-        row.total_reads += (row.end - row.start) * (row.coverage); //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
+        row.total_reads += double(row.end - row.start) * (row.coverage); //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
         library_size += row.total_reads;
-        //row.print();
+        row.print();
         // compute_per_base_coverage(row, per_base_coverage);
         bedgraph.push_back(row);
     }
@@ -68,14 +68,15 @@ void Parser::read_rr(std::string filename)
         // read in line by line
         std::istringstream iss(line);
 
-        // skip invalid lines
-        if (line.empty() || line.find("chromosome") != std::string::npos || line.find("ERCC-") != std::string::npos ) {
+        // skip invalid lines, headers, ERCC and Y-chromosome
+        if (line.empty() || line.find("chromosome") != std::string::npos || line.find("ERCC-") != std::string::npos || line.find("chrY") != std::string::npos) {
+            std::cout << line << std::endl;
             continue;
         }
         SJRow row = SJRow();
         iss >> row;
 
-        std::cout << row << std::endl;
+        //std::cout << row << std::endl;
 
         sample_rr.push_back(row);
     }
@@ -112,7 +113,7 @@ void Parser::read_mm(std::string filename) {
             }
 
             // skip invalid lines
-            int sj_id, sample_id, count;
+            unsigned int sj_id, sample_id, count;
             if (!(iss >> sj_id >> sample_id >> count)){
                 std::cout << "malformed line in MM file: " << line << std::endl;
                 continue;
@@ -134,14 +135,14 @@ void Parser::search_directory() {
         std::cout << filename << std::endl;
         // read RR file
         if (filename.find("ALL.RR") != std::string::npos) {
-            std::cout << "M";
-            read_rr(filename);
+            std::cout << "M" << std::endl;
+            //read_rr(filename);
 
         }
 
         else if (filename.find("ALL.MM") != std::string::npos) {
             std::cout << "R";
-            read_mm(filename);
+            //read_mm(filename);
         }
 
         else if (filename.find(".bedGraph") != std::string::npos) {

@@ -14,9 +14,9 @@ class SJRow
 {
 public:
     std::string chrom;
-    int start;
-    int end;
-    int length;
+    unsigned int start;
+    unsigned int end;
+    unsigned int length;
     bool strand; // 1 = +, 0 = -
     bool annotated; // 0 or 1
     std::string left_motif;

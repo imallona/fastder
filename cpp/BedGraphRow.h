@@ -12,12 +12,12 @@ class BedGraphRow
 {
 public:
     std::string chrom;
-    int start;
-    int end;
+    unsigned int start;
+    unsigned int end;
     double coverage;
     //double avg = 0;
-    int total_reads;
-    int length;
+    unsigned int total_reads;
+    unsigned int length;
     // add optional values for average coverage, DER identifier
 
     //print BedGraphRow
