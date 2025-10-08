@@ -11,21 +11,12 @@
 #include <cassert>
 #include "BedGraphRow.h"
 #include "SJRow.h"
-#include "Average.h"
+#include "Averager.h"
 // overload input operator for SJRow
-std::istream& operator>> (std::istream& is, SJRow& row)
-{
-    char annotated;
-    is >> row.chrom >> row.start >> row.end >> row.length >> row.strand >> annotated >> row.left_motif
-    >> row.right_motif >> row.left_annotated >> row.right_annotated;
-    row.annotated = (annotated == '+'); // 1 if +
-    return is;
-}
-
 
 
 // fill vector with coverage value per bp (since different bedgraphs have different binning intervals)
-void Average::compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage)
+void Averager::compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage)
 {
     // row.end is NOT inclusive
     int position = row.end - row.start; //for just one nt, row.start = 22, row.end = 23 -> position = 1
@@ -39,7 +30,7 @@ void Average::compute_per_base_coverage(const BedGraphRow& row, std::vector<doub
 }
 //normalize reads to CPM for better comparability between libraries
 //arguments: vector containing per-base coverage of one sample
-void Average::normalize(std::vector<double>& per_base_coverage, const int library_size)
+void Averager::normalize(std::vector<double>& per_base_coverage, const int library_size)
 {
     for (double& e : per_base_coverage)
     {
@@ -117,7 +108,7 @@ void read_rr(const std::string filename,
 
 
 //compute overall average coverage
-std::vector<double> compute_avg_coverage(const std::vector<std::vector<double>>& all_per_base_coverages)
+std::vector<double> Averager::compute_avg_coverage()
 {
     std::vector<double> avg_coverage(all_per_base_coverages[0].size());
     //iterate
@@ -137,14 +128,14 @@ std::vector<double> compute_avg_coverage(const std::vector<std::vector<double>>&
 }
 
 // returns true if (1 - tolerance) * 10 <= bp_coverage <= (1 + tolerance) * 10 == 8 <= bp_coverage <= 12 for tolerance = 0.2
-bool in_interval(double current_avg, double bp_coverage)
+bool Averager::in_interval(double current_avg, double bp_coverage)
 {
     // tolerance of +/- 20 %
     return bp_coverage >= 0.8 * current_avg && bp_coverage <= 1.2 * current_avg;
 }
 
 // identify ERs with coverage > 0.25 and length > 5 bp
-std::vector<BedGraphRow> find_ERs(const std::vector<double>& avg_coverage)
+std::vector<BedGraphRow> Averager::find_ERs(const std::vector<double>& avg_coverage)
 {
 
     std::vector<BedGraphRow> results;

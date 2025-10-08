@@ -11,7 +11,7 @@
 
 #endif //FASTDER_AVERAGE_H
 
-class Average {
+class Averager {
 
     public:
         void compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage);

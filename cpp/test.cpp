@@ -7,7 +7,7 @@
 #include <sstream>
 
 // custom struct for BedGraph
-struct BedGraphRow
+struct BedGraphRowTest
 {
     std::string chrom;
     int start;
@@ -22,14 +22,14 @@ int main2() {
     std::ifstream file("../gtex.base_sums.BRAIN_GTEX-12ZZX-2826-SM-5BC6K.1.ALL_chr19.bedGraph");
     if (file.is_open())
     {
-        std::vector<BedGraphRow> data;
+        std::vector<BedGraphRowTest> data;
         std::vector<int> per_base_coverage;
         // read in the whole file
         std::string line;
         while (std::getline(file, line))
         {
             std::istringstream iss(line);
-            BedGraphRow row;
+            BedGraphRowTest row;
             iss >> row.chrom >> row.start >> row.end >> row.coverage;
 
             // if multiple nt are binned as one
