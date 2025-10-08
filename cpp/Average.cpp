@@ -9,42 +9,9 @@
 #include <filesystem>
 #include <unordered_map>
 #include <cassert>
-
-// struct to store BedGraph
-struct BedGraphRow
-{
-    std::string chrom;
-    int start;
-    int end;
-    double coverage;
-    //double avg = 0;
-    int total_reads = 0;
-    int length = 0;
-    // add optional values for average coverage, DER identifier
-
-    //print BedGraphRow
-    void print() const
-    {
-        std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads <<  "\t" << length << std::endl;
-    }
-
-};
-
-// struct to store exon-exon junctions coordinate information from RR file
-struct SJRow
-{
-    std::string chrom;
-    int start;
-    int end;
-    int length;
-    bool strand; // 1 = +, 0 = -
-    bool annotated;
-    std::string left_motif;
-    std::string right_motif;
-    std::string  left_annotated;
-    std::string  right_annotated;
-
-};
+#include "BedGraphRow.h"
+#include "SJRow.h"
+#include "Average.h"
 // overload input operator for SJRow
 std::istream& operator>> (std::istream& is, SJRow& row)
 {
@@ -55,16 +22,10 @@ std::istream& operator>> (std::istream& is, SJRow& row)
     return is;
 }
 
-// overload output operator for SJRow
-std::ostream& operator<< (std::ostream& os, SJRow& row)
-{
-    return os << row.chrom << "\t" << row.start << "\t" << row.end << "\t" << row.length << "\t" << row.strand << "\t" <<
-        row.annotated << "\t" <<row.left_motif << "\t" << row.right_motif << "\t" << row.left_annotated << "\t" << row.right_annotated;
 
-}
 
 // fill vector with coverage value per bp (since different bedgraphs have different binning intervals)
-void compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage)
+void Average::compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage)
 {
     // row.end is NOT inclusive
     int position = row.end - row.start; //for just one nt, row.start = 22, row.end = 23 -> position = 1
@@ -78,7 +39,7 @@ void compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_
 }
 //normalize reads to CPM for better comparability between libraries
 //arguments: vector containing per-base coverage of one sample
-void normalize(std::vector<double>& per_base_coverage, const int library_size)
+void Average::normalize(std::vector<double>& per_base_coverage, const int library_size)
 {
     for (double& e : per_base_coverage)
     {

@@ -1,10 +1,13 @@
 //
-// Created by martinalavanya on 24.09.25.
+// Created by marti on 08/10/2025.
 //
-
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <sstream>
 #include "BedGraphRow.h"
 
-class BedGraphRow
-{
-    private
-};
+// print a BedGraphRow
+void BedGraphRow::print() const {
+    std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads <<  "\t" << length << std::endl;
+}

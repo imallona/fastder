@@ -15,7 +15,7 @@ struct BedGraphRow
     int coverage;
 };
 
-int main() {
+int main2() {
     std::cout << "HELLO" << std::endl;
 
     //read in file
