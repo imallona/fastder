@@ -19,6 +19,7 @@
 void Averager::compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage)
 {
     // row.end is NOT inclusive
+    //TODO check int uint safety, does assert even make sense?
     int position = row.end - row.start; //for just one nt, row.start = 22, row.end = 23 -> position = 1
     assert(position >= 0);
     do

@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <unordered_map>
 #include <BedGraphRow.h>
+#include <cassert>
 
 #include "Parser.h"
 
@@ -16,7 +17,7 @@ Parser::Parser(std::string _path) {
     path = _path;
 }
 
-// read in one chromosome of a bedgraph file
+// parse relevant chromosomes of a bedgraph file
 std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename)
 {
     std::vector<BedGraphRow> bedgraph;
@@ -37,7 +38,8 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename)
         BedGraphRow row;
         iss >> row.chrom >> row.start >> row.end >> row.coverage;
         // calculate total number of reads that map to this bp interval
-        row.total_reads += double(row.end - row.start) * (row.coverage); //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
+        // TODO think about int -> unsigned int type safety
+        row.total_reads += (row.end - row.start) * (row.coverage); //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
         library_size += row.total_reads;
         row.print();
         // compute_per_base_coverage(row, per_base_coverage);
@@ -136,13 +138,13 @@ void Parser::search_directory() {
         // read RR file
         if (filename.find("ALL.RR") != std::string::npos) {
             std::cout << "M" << std::endl;
-            //read_rr(filename);
+            read_rr(filename);
 
         }
 
         else if (filename.find("ALL.MM") != std::string::npos) {
             std::cout << "R";
-            //read_mm(filename);
+            read_mm(filename);
         }
 
         else if (filename.find(".bedGraph") != std::string::npos) {
