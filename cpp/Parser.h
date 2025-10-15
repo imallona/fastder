@@ -17,7 +17,7 @@ public:
     void read_rr(std::string filename);
     void normalize(const unsigned int& library_size);
     void read_url_csv(std::string filename);
-
+    void fill_up(std::vector<std::string> bedgraph_files);
 
 
     std::string path;
@@ -29,13 +29,13 @@ public:
     std::vector<SJRow> sample_rr;
 
     // store Market Matrix (MM) file for one sample
-    std::unordered_map<unsigned int, std::vector<std::pair<unsigned int, unsigned int>>> mm_by_samples;
+    // std::unordered_map<unsigned int, std::vector<std::pair<unsigned int, unsigned int>>> mm_by_samples;
 
-    std::vector<std::pair<unsigned int, unsigned int>> mm_by_sample;
+    std::vector<std::pair<unsigned int, unsigned int>> all_mm;
 
-    std::vector<std::pair<unsigned int, std::string>> all_sample_ids; // rail_id, sample_id
+    std::vector<std::pair<unsigned int, std::string>> all_sample_ids; // <rail_id, external_id>
 
-    std::vector<std::pair<unsigned int, unsigned int>> rail_id_to_mm; // rail_id, mm_id
+    std::vector<std::pair<unsigned int, unsigned int>> rail_id_mm_id; // <rail_id, mm_id>
 
 
 

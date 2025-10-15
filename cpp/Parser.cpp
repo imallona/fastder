@@ -49,18 +49,6 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename, unsig
         bedgraph.push_back(row);
     }
 
-    // add the sample and its mm index (= the rank of the rail id across the study) to rail_id_to_mm
-    // [&] references all necessary variables i.e. the required context, here it's filename
-    auto it = std::find_if(all_sample_ids.begin(), all_sample_ids.end(), [&](const auto& sample)
-    {
-        // the external id is part of the filename for all three sources GTEX, TCGA and SRA
-        return filename.find(sample.second) != std::string::npos;
-    });
-
-    unsigned int mm_id = std::distance(all_sample_ids.begin(), it);
-    unsigned int rail_id = it->first;
-
-    rail_id_to_mm.push_back(std::make_pair(rail_id, mm_id));
 
     return bedgraph;
 
@@ -109,8 +97,10 @@ void Parser::read_mm(std::string filename) {
         std::cout << filename << std::endl;
         //read in file from path
         std::ifstream file(filename);
-        unsigned int max_index = 0;
-        unsigned int min_index = 200;
+        // max index is 2931 (= nr of samples)
+        // min index is 0
+        // mm_by_samples.size() = 2931
+
         if (!file.is_open())
         {
             std::cerr << "Error opening file " << filename << std::endl;
@@ -133,29 +123,30 @@ void Parser::read_mm(std::string filename) {
             }
 
             // skip invalid lines
-            unsigned int sj_id, sample_id, count;
-            if (sample_id > max_index)
-            {
-                max_index = sample_id;
-            }
-            if (sample_id < min_index)
-            {
-                min_index = sample_id;
-            }
-            if (!(iss >> sj_id >> sample_id >> count)){
-                //std::cout << "malformed line in MM file: " << line << std::endl;
+            unsigned int sj_id, mm_id, count;
+
+            if (!(iss >> sj_id >> mm_id >> count)){
+                std::cout << "malformed line in MM file: " << line << std::endl;
                 continue;
             }
-            //std::cout << sj_id << " " << sample_id << " " << count << std::endl;
-            // add line to MM dictionary
-            mm_by_samples[sample_id].push_back(std::make_pair(sj_id, count));
-            //std::cout << sample_id << ": " << mm_by_samples[sample_id][0].first << " " << mm_by_samples[sample_id][0].second << std::endl;
-            //if sample_id in rail_id_to_mm ->
+
+            // OLD: mm_by_samples[sample_id].push_back(std::make_pair(sj_id, count));
+            // NEW: cumulative occurrence of a sj_id across all samples in the input
+
+            // find the rail_id based on the mm_id TODO maybe better make rail_id_mm_id a hash table??
+            auto it = std::find_if(all_mm.begin(), all_mm.end(), [&] (const auto& p)
+            {
+                return p.second == mm_id;
+            });
+
+            // add count if the mm was found
+            if (it != all_mm.end())
+            {
+                all_mm[it->first]. // TODO CONTINUE HERE FROM 15.11
+            }
 
         }
-        std::cout <<  "max index" << max_index << std::endl;
-        std::cout <<  "min index" << min_index << std::endl;
-        std::cout << "nr of samples" << mm_by_samples.size() << std::endl;
+
 
     }
 
@@ -203,9 +194,32 @@ void Parser::read_url_csv(std::string filename)
         return a.first < b.first;
     });
 
+    std::cout << all_sample_ids[0].first << " " << all_sample_ids[0].second << std::endl;
+    std::cout << all_sample_ids[all_sample_ids.size() -1].first << " " << all_sample_ids[all_sample_ids.size() -1].second << std::endl;
+
 
 }
 
+void Parser::fill_up(std::vector<std::string> bedgraph_files)
+{
+    //fill up mm_by_rail_id
+    for (auto& bedgraph_file : bedgraph_files)
+    {
+        // add the sample and its mm index (= the rank of the rail id across the study) to rail_id_to_mm
+        // [&] references all necessary variables i.e. the required context, here it's filename
+        auto it = std::find_if(all_sample_ids.begin(), all_sample_ids.end(), [&](const auto& sample)
+        {
+            // the external id is part of the filename for all three sources GTEX, TCGA and SRA
+            return bedgraph_file.find(sample.second) != std::string::npos;
+        });
+
+        unsigned int mm_id = std::distance(all_sample_ids.begin(), it) + 1; // std::distance counts the steps between two iterators --> one too small
+        unsigned int rail_id = it->first;
+
+        rail_id_mm_id.push_back(std::make_pair(rail_id, mm_id));
+
+    }
+}
 
 // attempt to parse all files in path (not recursive!)
 void Parser::search_directory() {
@@ -213,6 +227,7 @@ void Parser::search_directory() {
     bool contains_ids = false;
 
     // first check for the external_id to rail_id mapping CSV file
+    std::vector<std::string> bedgraph_files;
     for (const auto & entry : std::filesystem::directory_iterator(path))
     {
         std::string filename = entry.path().string();
@@ -223,12 +238,23 @@ void Parser::search_directory() {
             contains_ids = true;
             break;
         }
+
+        // fill up rail_id_to_mm_present before creating mm_by_rail_id
+        else if (filename.find(".bedGraph") != std::string::npos)
+        {
+            bedgraph_files.push_back(filename);
+        }
     }
+
+    // program cannot run with missing BigWig URL list
     if (!contains_ids)
     {
-        std::cerr << "MISSING BigWig URL list! Cannot proceed";
+        std::cerr << "MISSING BigWig URL list! Cannot proceed...";
         return;
     }
+
+
+
     // now parse all other files
     for (const auto & entry : std::filesystem::directory_iterator(path))
     {
