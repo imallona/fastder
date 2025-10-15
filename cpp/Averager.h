@@ -15,7 +15,7 @@ class Averager {
 
     public:
         void compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage);
-        void normalize(std::vector<double>& per_base_coverage, const int library_size);
+        void normalize(std::vector<double>& per_base_coverage, const unsigned int library_size);
         std::vector<double> compute_avg_coverage();
         bool in_interval(double current_avg, double bp_coverage);
         std::vector<BedGraphRow> find_ERs(const std::vector<double>& avg_coverage);

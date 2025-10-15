@@ -14,8 +14,7 @@ public:
     std::string chrom;
     unsigned int start;
     unsigned int end;
-    double coverage;
-    //double avg = 0;
+    double coverage; // normalized coverage by CPM
     unsigned int total_reads;
     unsigned int length;
     // add optional values for average coverage, DER identifier
@@ -23,5 +22,6 @@ public:
     //print BedGraphRow
     BedGraphRow() = default;
     void print() const;
+    void normalize(const double& library_size);
 
 };

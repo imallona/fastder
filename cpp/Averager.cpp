@@ -12,14 +12,13 @@
 #include "BedGraphRow.h"
 #include "SJRow.h"
 #include "Averager.h"
-// overload input operator for SJRow
-
 
 // fill vector with coverage value per bp (since different bedgraphs have different binning intervals)
 void Averager::compute_per_base_coverage(const BedGraphRow& row, std::vector<double>& per_base_coverage)
 {
     // row.end is NOT inclusive
     //TODO check int uint safety, does assert even make sense?
+    assert(row.end >= row.start);
     int position = row.end - row.start; //for just one nt, row.start = 22, row.end = 23 -> position = 1
     assert(position >= 0);
     do
@@ -178,7 +177,7 @@ std::vector<BedGraphRow> Averager::find_ERs(const std::vector<double>& avg_cover
     return results;
 }
 
-int main() {
+int main2() {
     std::string bigwig_path = "../data/preprocessing";
     std::string rr_path = "../data/splice_junctions/gtex.junctions.BRAIN.ALL.RR";
     //std::cin >> path; //for later

@@ -11,3 +11,10 @@
 void BedGraphRow::print() const {
     std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads <<  "\t" << length << std::endl;
 }
+
+
+//normalize reads to CPM for better comparability between libraries
+void BedGraphRow::normalize(const double& library_size)
+{
+    this->coverage = (this->coverage / library_size) * 1e6;
+}

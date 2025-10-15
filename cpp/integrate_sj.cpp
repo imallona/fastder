@@ -7,8 +7,9 @@
     
     struct stitchedER
 {
-    std::vector<unsigned int> er_ids; //map to index of results
-    double across_er_coverage; // avg (weighted) coverage of the stitched ER so far
+    std::vector<unsigned int> er_ids; //all expressed regions in a stitched_ER, er_id corresponds to index of results (i.e. expressed_regions)
+      // example: stitched_ER consists of er_ids 45, 46, 47, 49
+    double across_er_coverage; // avg (weighted) coverage of all exons that are part of the stitched ER so far
     std::vector<pair<int, double>> all_coverages; // stores a pair of er length (= weight) + normalized average coverage of the er
     unsigned int total_reads = 0;
     unsigned int length = 0;
@@ -35,8 +36,10 @@
     
     
     
-    
-  for sample in samples:
+// iterate over samples
+  for sample in samples
+  for (mm_by_samples.keys() in mm_by_samples) (to get all sample IDs)
+
     std::map<BedGraphRow> stitched_regions;
     std::vector<SJRow> sjs = mm_by_samples[sample.id] // all sjs that were discovered by STAR within one sample
     auto current_sj_id = sjs.begin(); //iterator over the vector of SJ ids

@@ -17,8 +17,9 @@ Parser::Parser(std::string _path) {
     path = _path;
 }
 
+
 // parse relevant chromosomes of a bedgraph file
-std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename)
+std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename, unsigned int& library_size)
 {
     std::vector<BedGraphRow> bedgraph;
     std::cout << filename << std::endl;
@@ -29,7 +30,6 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename)
         std::cerr << "Error opening .bedgraph file " << filename << std::endl;
     }
     std::string line;
-    unsigned int library_size = 0;
     // iterate over lines
     while (std::getline(file, line))
     {
@@ -41,7 +41,7 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename)
         // TODO think about int -> unsigned int type safety
         row.total_reads += (row.end - row.start) * (row.coverage); //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
         library_size += row.total_reads;
-        row.print();
+        //row.print();
         // compute_per_base_coverage(row, per_base_coverage);
         bedgraph.push_back(row);
     }
@@ -72,7 +72,7 @@ void Parser::read_rr(std::string filename)
 
         // skip invalid lines, headers, ERCC and Y-chromosome
         if (line.empty() || line.find("chromosome") != std::string::npos || line.find("ERCC-") != std::string::npos || line.find("chrY") != std::string::npos) {
-            std::cout << line << std::endl;
+            //std::cout << line << std::endl;
             continue;
         }
         SJRow row = SJRow();
@@ -117,13 +117,13 @@ void Parser::read_mm(std::string filename) {
             // skip invalid lines
             unsigned int sj_id, sample_id, count;
             if (!(iss >> sj_id >> sample_id >> count)){
-                std::cout << "malformed line in MM file: " << line << std::endl;
+                //std::cout << "malformed line in MM file: " << line << std::endl;
                 continue;
             }
             //std::cout << sj_id << " " << sample_id << " " << count << std::endl;
             // add line to MM dictionary
             mm_by_samples[sample_id].push_back(std::make_pair(sj_id, count));
-            std::cout << sample_id << ": " << mm_by_samples[sample_id][0].first << " " << mm_by_samples[sample_id][0].second << std::endl;
+            //std::cout << sample_id << ": " << mm_by_samples[sample_id][0].first << " " << mm_by_samples[sample_id][0].second << std::endl;
 
         }
 
@@ -134,26 +134,37 @@ void Parser::search_directory() {
     for (const auto & entry : std::filesystem::directory_iterator(path))
     {
         std::string filename = entry.path().string();
-        std::cout << filename << std::endl;
+        //std::cout << filename << std::endl;
         // read RR file
         if (filename.find("ALL.RR") != std::string::npos) {
-            std::cout << "M" << std::endl;
+            std::cout << "R" << std::endl;
             read_rr(filename);
 
         }
 
         else if (filename.find("ALL.MM") != std::string::npos) {
-            std::cout << "R";
+            std::cout << "M"<< std::endl;
             read_mm(filename);
         }
 
         else if (filename.find(".bedGraph") != std::string::npos) {
-            std::cout << "B";
+            std::cout << "B"<< std::endl;
+
             std::vector<double> per_base_coverage;
-            std::vector<BedGraphRow> bedgraph = read_bedgraph(filename);
-            // add to matrix
-            all_bedgraphs.push_back(bedgraph);
-            //all_per_base_coverages.push_back(per_base_coverage);
+            double library_size = 0;
+            std::vector<BedGraphRow> sample_bedgraph = read_bedgraph(filename, library_size);
+
+            //normalize to CPM
+            for (BedGraphRow row : sample_bedgraph)
+            {
+                row.normalize(library_size);
+            }
+
+            // add to matrix of all bedgraphs per sample
+            // all_bedgraphs[sample_id].push_back(sample_bedgraph); TODO do I care about the sample id of each bedgraph?
+            // TODO why are expressed_regions sample specific??? (on the iPad)
+
+
 
         }
 
@@ -169,5 +180,6 @@ void Parser::search_directory() {
 
 
     }
+    std::cout << "DONE" << std::endl;
 
 }

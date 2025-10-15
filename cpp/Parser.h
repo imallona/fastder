@@ -12,15 +12,15 @@ class Parser {
 public:
     Parser(std::string _path);
     void search_directory();
-    std::vector<BedGraphRow> read_bedgraph(std::string filename);
+    std::vector<BedGraphRow> read_bedgraph(std::string filename, unsigned int& library_size);
     void read_mm(std::string filename);
     void read_rr(std::string filename);
-
+    void normalize(const unsigned int& library_size);
 
 
     std::string path;
-    std::vector<std::vector<BedGraphRow>> all_bedgraphs;
-    std::vector<std::vector<double>> all_per_base_coverages;
+    std::unordered_map<std::string, std::vector<BedGraphRow>> all_bedgraphs; //key = sample id, value = bedgraph of the sample
+    //std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages;
 
 
     // store RR file for one sample
