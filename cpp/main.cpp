@@ -19,7 +19,10 @@ int main() {
     Parser parser(directory);
     parser.search_directory();
 
-    //
+    for (auto p : parser.rail_id_to_mm)
+    {
+        std::cout << "rail id = " << p.first << " , MM id = " << p.second << std::endl;
+    }
 
     return 0;
 }
