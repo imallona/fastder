@@ -19,12 +19,11 @@ public:
     void normalize(const unsigned int& library_size);
     void read_url_csv(std::string filename);
     void fill_up(std::vector<std::string> bedgraph_files);
+    //void get_per_base_coverages();
     // TODO add function get_rail_id_from_filename(filename)?
 
     std::string path;
-    std::vector<std::vector<BedGraphRow>> all_bedgraphs; //TODO change to unordered map with key = sample id, value = bedgraph of the sample?
-    //std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages;
-
+    std::vector<std::vector<BedGraphRow>> all_bedgraphs; //TODO maybe change to unordered map with key = sample id, value = bedgraph of the sample?
 
     // store RR file for one sample
     std::vector<SJRow> rr_all_sj;
@@ -37,6 +36,8 @@ public:
     std::vector<std::pair<unsigned int, std::string>> rail_id_to_ext_id; // <rail_id, external_id> for all samples in the dataset
 
     std::vector<std::pair<unsigned int, unsigned int>> rail_id_to_mm_id; // <rail_id, mm_id> mapping
+
+
 
 
 

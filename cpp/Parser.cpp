@@ -219,6 +219,8 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
     }
 }
 
+
+
 // attempt to parse all files in path (not recursive!)
 void Parser::search_directory() {
 
@@ -272,13 +274,13 @@ void Parser::search_directory() {
         // read RR file
         if (filename.find("ALL.RR") != std::string::npos) {
             std::cout << "RR file" << std::endl;
-            read_rr(filename);
+            //read_rr(filename);
 
         }
 
         else if (filename.find("ALL.MM") != std::string::npos) {
             std::cout << "MM file"<< std::endl;
-            read_mm(filename);
+            //read_mm(filename);
         }
 
         else if (filename.find(".bedGraph") != std::string::npos) {
@@ -289,14 +291,9 @@ void Parser::search_directory() {
 
             //normalize to CPM
 
-            for (BedGraphRow row : sample_bedgraph)
+            for (BedGraphRow& row : sample_bedgraph)
             {
-                // std::cout << "*********************" << std::endl;
-                // std::cout << library_size << std::endl;
-                // row.print();
                 row.normalize(library_size);
-                // row.print();
-                // std::cout << "*********************" << std::endl;
             }
 
             // add to matrix of all bedgraphs per sample
@@ -314,8 +311,10 @@ void Parser::search_directory() {
 
         //int library_size = read_file(entry.path().string(), per_base_coverage, bedgraph);
 
-        // normalize read counts
-        //normalize(per_base_coverage, library_size);
+        // create per base coverage across all samples (sample-agnostic)
+
+        //get_per_base_coverages();
+
     }
 
     std::cout << "nr of splice junctions across all samples in user input: " << mm_sj_counts.size() << std::endl;
