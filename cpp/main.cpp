@@ -24,7 +24,13 @@ int main() {
     Averager averager;
     // get per-base coverage
     averager.get_all_per_base_coverage(parser.all_bedgraphs);
+
+    // get mean coverage vector
     averager.compute_mean_coverage();
+
+    // get expressed regions
+    averager.find_ERs(0.25, 5);
+    std::cout << averager.expressed_regions.size() << std::endl;
 
     return 0;
 }

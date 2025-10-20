@@ -107,47 +107,52 @@ void Averager::compute_mean_coverage()
 //     return bp_coverage >= 0.8 * current_avg && bp_coverage <= 1.2 * current_avg;
 // }
 
-// // identify ERs with coverage > 0.25 and length > 5 bp
-// std::vector<BedGraphRow> Averager::find_ERs(const std::vector<double>& avg_coverage)
-// {
-//
-//     std::vector<BedGraphRow> results;
-//     int start = 0;
-//     double current_avg = 0;
-//     //int end = 1;
-//
-//     //if length > 5 and coverage at bp < 5 -> ER has ended, append
-//     // if coverage at bp > 5 --> add to current ER
-//     // if coverage < 5 && length < 5: don't count as ER, reset start and average
-//
-//     for (int i = 0; i < avg_coverage.size(); i++)
-//     {
-//         // coverage of less than 5
-//         if (avg_coverage[i] <=0.25 )
-//         {
-//             // region at least 5 bp long, append to results
-//             if ((i - start) > 5)
-//             {
-//                 current_avg /= (i - 1 - start);
-//                 BedGraphRow der = {"chr19", start, i - 1, current_avg};
-//                 der.length = (i - 1 - start);
-//                 //der.print();
-//                 results.push_back(der);
-//
-//             }
-//             //region too short to be appended, reset start and current avg
-//             start = i + 1;
-//             current_avg = 0;
-//
-//         }
-//         // add to current ER
-//         else if (avg_coverage[i] > 0.25)
-//         {
-//             current_avg += avg_coverage[i];
-//         }
-//     }
-//     return results;
-// }
+// identify ERs with coverage > 0.25 and length > 5 bp
+void Averager::find_ERs(double threshold, int min_length)
+{
+
+    int start = 0;
+    double current_avg = 0;
+    int count = 0;
+
+    //if length > 5 and coverage at bp < 5 -> ER has ended, append
+    // if coverage at bp > 5 --> add to current ER
+    // if coverage < 5 && length < 5: don't count as ER, reset start and average
+
+    for (auto& pair : mean_coverage)
+    {
+
+        for (unsigned int i = 0; i < pair.second.size(); i++)
+        {
+            double coverage = pair.second[i];
+            // coverage of less than 5
+            if (pair.second[i] <= threshold)
+            {
+                // region at least 5 bp long, append to results
+                if ((i - start) > min_length)
+                {
+                    current_avg /= (i - 1 - start);
+                    BedGraphRow expressed_region = BedGraphRow(pair.first, start, i - 1, current_avg);
+                    // expressed_region.length = (i - 1 - start);
+                    expressed_region.print();
+                    expressed_regions.push_back(expressed_region);
+
+                }
+                //region too short to be appended, reset start and current avg
+                start = i + 1;
+                current_avg = 0;
+
+            }
+            // add to current ER
+            else if (coverage > threshold)
+            {
+                current_avg += coverage;
+                ++count;
+            }
+        }
+    }
+    //std::cout << count << " positions" << std::endl;
+}
 
 // int main2() {
 //     std::string bigwig_path = "../data/preprocessing";

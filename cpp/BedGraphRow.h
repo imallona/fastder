@@ -22,6 +22,7 @@ public:
 
 
     BedGraphRow() = default;
+    BedGraphRow(std::string chrom, unsigned int start, unsigned int end, double coverage);
     void print() const;
     void normalize(const uint64_t library_size);
 

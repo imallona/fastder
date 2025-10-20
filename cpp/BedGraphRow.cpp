@@ -8,6 +8,12 @@
 #include "BedGraphRow.h"
 #include <cstdint>
 
+// constructor with arguments
+BedGraphRow::BedGraphRow(std::string _chrom, unsigned int _start, unsigned int _end, double _coverage) : chrom(_chrom),
+    start(_start), end(_end), coverage(_coverage), total_reads(0), length(_end - _start)
+{
+}
+
 // print a BedGraphRow
 void BedGraphRow::print() const {
     std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads <<  "\t" << length << std::endl;

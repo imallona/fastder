@@ -39,7 +39,7 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
     {
         // read in line by line
         std::istringstream iss(line);
-        BedGraphRow row;
+        BedGraphRow row = BedGraphRow();
         iss >> row.chrom >> row.start >> row.end >> row.coverage;
         // calculate total number of reads that map to this bp interval
         // TODO think about int -> unsigned int type safety
