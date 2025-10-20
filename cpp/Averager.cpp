@@ -133,8 +133,8 @@ void Averager::find_ERs(double threshold, int min_length)
                 {
                     current_avg /= (i - 1 - start);
                     BedGraphRow expressed_region = BedGraphRow(pair.first, start, i - 1, current_avg);
-                    // expressed_region.length = (i - 1 - start);
-                    expressed_region.print();
+
+                    //expressed_region.print();
                     expressed_regions.push_back(expressed_region);
 
                 }
@@ -153,38 +153,3 @@ void Averager::find_ERs(double threshold, int min_length)
     }
     //std::cout << count << " positions" << std::endl;
 }
-
-// int main2() {
-//     std::string bigwig_path = "../data/preprocessing";
-//     std::string rr_path = "../data/splice_junctions/gtex.junctions.BRAIN.ALL.RR";
-//     //std::cin >> path; //for later
-//
-//     // matrix consisting of multiple vectors, where each row in a vector is of type BedGraphRow
-//     // bedgraphs.size() == 16
-//     // bedgraphs[0].size() == length of first bedgraph
-//     std::vector<std::vector<BedGraphRow>> all_bedgraphs;
-//     std::vector<std::vector<double>> all_per_base_coverages;
-//
-//     //read in every sample file and create per-base coverage file
-//     for (const auto & entry : std::filesystem::directory_iterator(bigwig_path))
-//     {
-//         std::vector<BedGraphRow> bedgraph;
-//         std::vector<double> per_base_coverage;
-//         int library_size = read_file(entry.path().string(), per_base_coverage, bedgraph);
-//
-//         // normalize read counts
-//         normalize(per_base_coverage, library_size);
-//
-//         // add to matrix
-//         all_bedgraphs.push_back(bedgraph);
-//         all_per_base_coverages.push_back(per_base_coverage);
-//     }
-//
-//     // compute average coverage per read
-//     std::vector<double> avg_coverage = compute_avg_coverage(all_per_base_coverages);
-//
-//     // find DERs
-//     std::vector<BedGraphRow> results = find_ERs(avg_coverage);
-//
-//     return 0;
-// }

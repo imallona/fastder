@@ -1,40 +1,4 @@
- // function that calculates relative match with a tolerance of +/- 5%
-    bool is_similar(double val1, double val2){
-      double tolerance_bottom = val1 * 0.95;
-      double tolerance_top = val1 * 1.05;
-      return val2 >= tolerance_bottom && val2 <= tolerance_top;
-    }
-    
-    struct stitchedER
-{
-    std::vector<unsigned int> er_ids; //all expressed regions in a stitched_ER, er_id corresponds to index of results (i.e. expressed_regions)
-      // example: stitched_ER consists of er_ids 45, 46, 47, 49
-    double across_er_coverage; // avg (weighted) coverage of all exons that are part of the stitched ER so far
-    std::vector<pair<int, double>> all_coverages; // stores a pair of er length (= weight) + normalized average coverage of the er
-    unsigned int total_reads = 0;
-    unsigned int length = 0;
-    // add optional values for average coverage, DER identifier
 
-    // print BedGraphRow
-    void print() const
-    {
-        std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads <<  "\t" << length << std::endl;
-    }
-    // later change to add weight / memory
-    double get_avg_coverage(){
-      double sum = 0;
-      unsigned int total_length = 0;
-      for (auto er : this->all_coverages){
-        sum += er.first() * er.second(); // weighted sum of avg coverages across ERs
-        total_length += er.second();
-        
-      }
-      return sum / total_length;
-    }
-
-};
-    
-    
     
 // iterate over samples
   for sample in samples

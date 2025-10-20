@@ -20,7 +20,7 @@ class Averager {
         void find_ERs(double threshold, int min_length);
         void get_all_per_base_coverage(const std::vector<std::vector<BedGraphRow>>& all_bedgraphs);
         static void compute_per_base_coverage(const BedGraphRow& row, std::unordered_map<std::string, std::vector<double>>& per_base_coverage);
-
+        void stitch_up();
 
         // MEMBER VARIABLES
 
