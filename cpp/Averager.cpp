@@ -20,8 +20,8 @@ void Averager::compute_per_base_coverage(const BedGraphRow& row, std::unordered_
     unsigned int position = row.end - row.start; //for just one nt, row.start = 22, row.end = 23 -> position = 1
     do
     {
-        if (row.length < 10)
-            std::cout << "row coverage = " << row.coverage << std::endl;
+        // if (row.length < 10)
+        //     std::cout << "row coverage = " << row.coverage << std::endl;
         per_base_coverage[row.chrom].push_back(row.coverage);
         position--;
     }
@@ -37,7 +37,7 @@ void Averager::get_all_per_base_coverage(const std::vector<std::vector<BedGraphR
         std::unordered_map<std::string, std::vector<double>> per_base_coverage;
         for (auto& row : bedgraph)
         {
-            row.print();
+            // row.print();
             compute_per_base_coverage(row, per_base_coverage);
 
         }
@@ -45,25 +45,60 @@ void Averager::get_all_per_base_coverage(const std::vector<std::vector<BedGraphR
     }
 }
 
-//compute overall average coverage
-// std::vector<double> Averager::compute_avg_coverage()
+//
+// //compute overall average coverage
+// void Averager::compute_mean_expression_vector(const std::vector<std::vector<BedGraphRow>>& all_bedgraphs)
 // {
-//     std::vector<double> avg_coverage(all_per_base_coverages[0].size());
+//
 //     //iterate
-//     std::cout << all_per_base_coverages.size() << "outer dim, inner dim = "<< all_per_base_coverages[1].size() << std::endl;
+//     std::cout << all_per_base_coverages.size() << "outer dim (# samples), inner dim (# chromosomes) = "<< all_per_base_coverages[1].size() << std::endl;
 //     //outer loop iterates over each position in each sample
-//     for (unsigned int i = 0; i < all_per_base_coverages[0].size(); i++)
+//     for (unsigned int i = 0; i < all_bedgraphs[0].size(); i++)
 //     {
 //         double sum = 0;
 //         // inner loop iterates over each sample to get average of one position across samples
-//         for (unsigned int j = 0; j < all_per_base_coverages.size(); j++)
+//         for (unsigned int j = 0; j < all_bedgraphs.size(); j++)
 //         {
+//
 //             sum += all_per_base_coverages[j][i]; //sample j, position i
 //         }
-//         avg_coverage[i] = sum / all_per_base_coverages.size(); // (#nof reads at bp i) / (#nof samples)
+//         mean_coverage.push_back(sum / all_per_base_coverages.size()); // (#nof reads at bp i) / (#nof samples)
 //     }
-//     return avg_coverage;
+//
 // }
+//compute overall average coverage
+void Averager::compute_mean_coverage()
+{
+
+    //iterate
+    std::cout << "#samples = " << all_per_base_coverages.size() << ", #chromosomes = "<< all_per_base_coverages[0].size() << ", #nt for chromosome 19 = " << all_per_base_coverages[0]["chr19"].size() << std::endl;
+    // iterate over chromosomes
+    for (auto& pair : all_per_base_coverages[0])
+    {
+        std::string chrom = pair.first;
+        // iterate over values for each chromosome
+        for (unsigned int i = 0; i < pair.second.size(); i++)
+        {
+            double sum = 0;
+            // iterate over all positions i across samples
+            for (unsigned int j = 0; j < all_per_base_coverages.size(); j++)
+            {
+                // all_per_base_coverages[sample_nr][chromosome][base_pair_position]
+                sum += all_per_base_coverages[j][chrom][i]; //sample j, chromosome chrom, position i
+            }
+            mean_coverage[chrom].push_back(sum / all_per_base_coverages.size()); // (sum over coverage at bp i) / (#nof samples)
+        }
+    }
+    // for (auto& pair : mean_coverage)
+    // {
+    //     std::cout << pair.first << std::endl;
+    //     for (auto& v : pair.second)
+    //     {
+    //         std::cout << v << std::endl;
+    //     }
+    // }
+
+}
 
 // returns true if (1 - tolerance) * 10 <= bp_coverage <= (1 + tolerance) * 10 == 8 <= bp_coverage <= 12 for tolerance = 0.2
 // bool Averager::in_interval(double current_avg, double bp_coverage)

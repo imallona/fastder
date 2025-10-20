@@ -294,6 +294,7 @@ void Parser::search_directory() {
             for (BedGraphRow& row : sample_bedgraph)
             {
                 row.normalize(library_size);
+                //TODO here compute_per_base_coverage(row)
             }
 
             // add to matrix of all bedgraphs per sample
