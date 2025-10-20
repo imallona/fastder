@@ -5,6 +5,7 @@
 
 #ifndef FASTDER_BEDGRAPHROW_H
 #define FASTDER_BEDGRAPHROW_H
+#include <cstdint>
 
 #endif //FASTDER_BEDGRAPHROW_H
 
@@ -19,9 +20,9 @@ public:
     unsigned int length;
     // add optional values for average coverage, DER identifier
 
-    //print BedGraphRow
+
     BedGraphRow() = default;
     void print() const;
-    void normalize(const double& library_size);
+    void normalize(const uint64_t library_size);
 
 };

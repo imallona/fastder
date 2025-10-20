@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include "BedGraphRow.h"
+#include <cstdint>
 
 // print a BedGraphRow
 void BedGraphRow::print() const {
@@ -14,7 +15,7 @@ void BedGraphRow::print() const {
 
 
 //normalize reads to CPM for better comparability between libraries
-void BedGraphRow::normalize(const double& library_size)
+void BedGraphRow::normalize(const uint64_t library_size)
 {
     this->coverage = (this->coverage / library_size) * 1e6;
     //coverage is NOT cumulative across the bin but rather per base pair coverage within the bin

@@ -10,6 +10,7 @@
 #include <BedGraphRow.h>
 #include <cassert>
 #include <algorithm>
+#include <cstdint> // for library size which can be too large for unsigned int
 
 #include "Parser.h"
 
@@ -22,7 +23,7 @@ Parser::Parser(std::string _path) {
 
 
 // parse relevant chromosomes of a bedgraph file
-std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, unsigned int& library_size)
+std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint64_t& library_size)
 {
     std::vector<BedGraphRow> bedgraph; // stores the full bedgraph of one sample, organized by rows (bins) with the same coverage
     std::cout << filename << std::endl;
@@ -44,7 +45,7 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, unsi
         // TODO think about int -> unsigned int type safety
         row.length = row.end - row.start;
         // end is not inclusive, since row1.end == row2.start of the next row
-        row.total_reads += row.length * row.coverage; //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
+        row.total_reads = row.length * row.coverage; //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
         library_size += row.total_reads;
         //row.print();
         // compute_per_base_coverage(row, per_base_coverage);
@@ -283,18 +284,23 @@ void Parser::search_directory() {
         else if (filename.find(".bedGraph") != std::string::npos) {
             std::cout << "Bedgraph file"<< std::endl;
 
-            std::vector<double> per_base_coverage;
-            unsigned int library_size = 0;
+            uint64_t library_size = 0; // ensure that the number is large enough
             std::vector<BedGraphRow> sample_bedgraph = read_bedgraph(filename, library_size);
 
             //normalize to CPM
+
             for (BedGraphRow row : sample_bedgraph)
             {
+                // std::cout << "*********************" << std::endl;
+                // std::cout << library_size << std::endl;
+                // row.print();
                 row.normalize(library_size);
+                // row.print();
+                // std::cout << "*********************" << std::endl;
             }
 
             // add to matrix of all bedgraphs per sample
-            // all_bedgraphs[sample_id].push_back(sample_bedgraph); T
+            all_bedgraphs.push_back(sample_bedgraph);
 
         }
         // list with the mapping of external_id to rail_id

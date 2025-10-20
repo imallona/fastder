@@ -13,16 +13,16 @@ class Parser {
 public:
     Parser(std::string _path);
     void search_directory();
-    std::vector<BedGraphRow> read_bedgraph(const std::string& filename, unsigned int& library_size);
+    std::vector<BedGraphRow> read_bedgraph(const std::string& filename, uint64_t& library_size);
     void read_mm(std::string filename);
     void read_rr(std::string filename);
     void normalize(const unsigned int& library_size);
     void read_url_csv(std::string filename);
     void fill_up(std::vector<std::string> bedgraph_files);
-
+    // TODO add function get_rail_id_from_filename(filename)?
 
     std::string path;
-    std::unordered_map<std::string, std::vector<BedGraphRow>> all_bedgraphs; //key = sample id, value = bedgraph of the sample
+    std::vector<std::vector<BedGraphRow>> all_bedgraphs; //TODO change to unordered map with key = sample id, value = bedgraph of the sample?
     //std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages;
 
 
