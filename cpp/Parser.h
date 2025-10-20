@@ -6,13 +6,14 @@
 #define FASTDER_PARSE_H
 #include "SJRow.h"
 #include <unordered_map>
+#include <map>
 
 
 class Parser {
 public:
     Parser(std::string _path);
     void search_directory();
-    std::vector<BedGraphRow> read_bedgraph(std::string filename, unsigned int& library_size);
+    std::vector<BedGraphRow> read_bedgraph(const std::string& filename, unsigned int& library_size);
     void read_mm(std::string filename);
     void read_rr(std::string filename);
     void normalize(const unsigned int& library_size);
@@ -26,16 +27,16 @@ public:
 
 
     // store RR file for one sample
-    std::vector<SJRow> sample_rr;
+    std::vector<SJRow> rr_all_sj;
 
     // store Market Matrix (MM) file for one sample
     // std::unordered_map<unsigned int, std::vector<std::pair<unsigned int, unsigned int>>> mm_by_samples;
 
-    std::vector<std::pair<unsigned int, unsigned int>> all_mm;
+    std::unordered_map<unsigned int, unsigned int> mm_sj_counts; // <sj_id, count> map for all samples in the user input
 
-    std::vector<std::pair<unsigned int, std::string>> all_sample_ids; // <rail_id, external_id>
+    std::vector<std::pair<unsigned int, std::string>> rail_id_to_ext_id; // <rail_id, external_id> for all samples in the dataset
 
-    std::vector<std::pair<unsigned int, unsigned int>> rail_id_mm_id; // <rail_id, mm_id>
+    std::vector<std::pair<unsigned int, unsigned int>> rail_id_to_mm_id; // <rail_id, mm_id> mapping
 
 
 

@@ -17,4 +17,5 @@ void BedGraphRow::print() const {
 void BedGraphRow::normalize(const double& library_size)
 {
     this->coverage = (this->coverage / library_size) * 1e6;
+    //coverage is NOT cumulative across the bin but rather per base pair coverage within the bin
 }

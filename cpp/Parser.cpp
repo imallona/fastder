@@ -22,9 +22,9 @@ Parser::Parser(std::string _path) {
 
 
 // parse relevant chromosomes of a bedgraph file
-std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename, unsigned int& library_size)
+std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, unsigned int& library_size)
 {
-    std::vector<BedGraphRow> bedgraph;
+    std::vector<BedGraphRow> bedgraph; // stores the full bedgraph of one sample, organized by rows (bins) with the same coverage
     std::cout << filename << std::endl;
     //read in file from path
     std::ifstream file(filename);
@@ -42,7 +42,9 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string filename, unsig
         iss >> row.chrom >> row.start >> row.end >> row.coverage;
         // calculate total number of reads that map to this bp interval
         // TODO think about int -> unsigned int type safety
-        row.total_reads += (row.end - row.start) * (row.coverage); //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
+        row.length = row.end - row.start;
+        // end is not inclusive, since row1.end == row2.start of the next row
+        row.total_reads += row.length * row.coverage; //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
         library_size += row.total_reads;
         //row.print();
         // compute_per_base_coverage(row, per_base_coverage);
@@ -84,14 +86,14 @@ void Parser::read_rr(std::string filename)
 
         //std::cout << row << std::endl;
 
-        sample_rr.push_back(row);
+        rr_all_sj.push_back(row);
     }
 
 
 }
 
 
-// pass dictionary mm_by_samples by reference and fill it with keys (sample id) and int-int pairs (splice junction id, count)
+// pass dictionary all_mm by reference and fill it with keys (sj_id) and values (cumulative count of this sj across samples)
 void Parser::read_mm(std::string filename) {
 
         std::cout << filename << std::endl;
@@ -131,20 +133,22 @@ void Parser::read_mm(std::string filename) {
             }
 
             // OLD: mm_by_samples[sample_id].push_back(std::make_pair(sj_id, count));
-            // NEW: cumulative occurrence of a sj_id across all samples in the input
+            // NEW: cumulative counts of a sj_id across all samples in the input
 
-            // find the rail_id based on the mm_id TODO maybe better make rail_id_mm_id a hash table??
-            auto it = std::find_if(all_mm.begin(), all_mm.end(), [&] (const auto& p)
+            // find the rail_id based on the mm_id --> only add counts if the mm_id is part of the samples
+
+            auto it = std::find_if(rail_id_to_mm_id.begin(), rail_id_to_mm_id.end(), [&] (const auto& p)
             {
                 return p.second == mm_id;
             });
 
             // add count if the mm was found
-            if (it != all_mm.end())
+            if (it != rail_id_to_mm_id.end())
             {
-                all_mm[it->first]. // TODO CONTINUE HERE FROM 15.11
-            }
+                //std::cout << it->first << " : " << it->second << std::endl;
+                mm_sj_counts[sj_id] += count; // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
 
+            }
         }
 
 
@@ -178,9 +182,9 @@ void Parser::read_url_csv(std::string filename)
         //iss >> sample_id >> rail_id; // only read in the first two tab-separated entries, ignore the rest!
         if (std::getline(iss, rail_id_str, ',') && std::getline(iss, sample_id, ','))
         {
-            //std::cout << rail_id_str << std::endl;
+            //convert to integer
             int rail_id = std::stoi(rail_id_str);
-            all_sample_ids.push_back(std::make_pair(rail_id, sample_id));
+            rail_id_to_ext_id.push_back(std::make_pair(rail_id, sample_id));
         }
 
 
@@ -188,35 +192,28 @@ void Parser::read_url_csv(std::string filename)
 
     // sorting is n log n and finding the position + inserting can be n*n, so better to push_back and then sort
 
-    // sort all_sample_ids by rail_id to obtain the index used in the MM file
-    std::sort(all_sample_ids.begin(), all_sample_ids.end(), [](const auto& a, const auto& b)
-    {
-        return a.first < b.first;
-    });
-
-    std::cout << all_sample_ids[0].first << " " << all_sample_ids[0].second << std::endl;
-    std::cout << all_sample_ids[all_sample_ids.size() -1].first << " " << all_sample_ids[all_sample_ids.size() -1].second << std::endl;
-
 
 }
 
+// creates a map of rail_id to mm id in rail_id_to_mm_id
+// bedgraph_files contains the file name
 void Parser::fill_up(std::vector<std::string> bedgraph_files)
 {
-    //fill up mm_by_rail_id
+    //fill up rail_id_to_mm_id
     for (auto& bedgraph_file : bedgraph_files)
     {
         // add the sample and its mm index (= the rank of the rail id across the study) to rail_id_to_mm
         // [&] references all necessary variables i.e. the required context, here it's filename
-        auto it = std::find_if(all_sample_ids.begin(), all_sample_ids.end(), [&](const auto& sample)
+        auto it = std::find_if(rail_id_to_ext_id.begin(), rail_id_to_ext_id.end(), [&](const auto& sample)
         {
             // the external id is part of the filename for all three sources GTEX, TCGA and SRA
             return bedgraph_file.find(sample.second) != std::string::npos;
         });
 
-        unsigned int mm_id = std::distance(all_sample_ids.begin(), it) + 1; // std::distance counts the steps between two iterators --> one too small
+        unsigned int mm_id = std::distance(rail_id_to_ext_id.begin(), it) + 1; // std::distance counts the steps between two iterators --> mm_id is 1 too small
         unsigned int rail_id = it->first;
 
-        rail_id_mm_id.push_back(std::make_pair(rail_id, mm_id));
+        rail_id_to_mm_id.push_back(std::make_pair(rail_id, mm_id));
 
     }
 }
@@ -234,13 +231,13 @@ void Parser::search_directory() {
 
         if (filename.find("BigWig_list") != std::string::npos && filename.find(".csv") != std::string::npos) //TODO I checked some filenames of the URL csv files manually and they all contain the substring BigWig_list, so I hope that this is a general rule
         {
+            std::cout << "BigWig URL list" << std::endl;
             read_url_csv(filename);
             contains_ids = true;
-            break;
         }
 
-        // fill up rail_id_to_mm_present before creating mm_by_rail_id
-        else if (filename.find(".bedGraph") != std::string::npos)
+        // collect all bedgraph files to later fill up rail_id_to_mm_id
+        if (filename.find(".bedGraph") != std::string::npos)
         {
             bedgraph_files.push_back(filename);
         }
@@ -253,7 +250,17 @@ void Parser::search_directory() {
         return;
     }
 
+    // sort rail_id_to_ext_id by rail_id to obtain the index used in the MM file
+    std::sort(rail_id_to_ext_id.begin(), rail_id_to_ext_id.end(), [](const auto& a, const auto& b)
+    {
+        return a.first < b.first;
+    });
 
+    std::cout << "nr of samples in this study:  " << rail_id_to_ext_id.size() << std::endl;
+
+    // fill up rail_id_to_mm_id mapping for all rail_ids in the dataset
+    fill_up(bedgraph_files);
+    std::cout << "nr of samples provided by user: " << rail_id_to_mm_id.size() << std::endl;
 
     // now parse all other files
     for (const auto & entry : std::filesystem::directory_iterator(path))
@@ -263,18 +270,18 @@ void Parser::search_directory() {
         //std::cout << filename << std::endl;
         // read RR file
         if (filename.find("ALL.RR") != std::string::npos) {
-            std::cout << "R" << std::endl;
+            std::cout << "RR file" << std::endl;
             read_rr(filename);
 
         }
 
         else if (filename.find("ALL.MM") != std::string::npos) {
-            std::cout << "M"<< std::endl;
+            std::cout << "MM file"<< std::endl;
             read_mm(filename);
         }
 
         else if (filename.find(".bedGraph") != std::string::npos) {
-            std::cout << "B"<< std::endl;
+            std::cout << "Bedgraph file"<< std::endl;
 
             std::vector<double> per_base_coverage;
             unsigned int library_size = 0;
@@ -304,6 +311,12 @@ void Parser::search_directory() {
         // normalize read counts
         //normalize(per_base_coverage, library_size);
     }
-    std::cout << "DONE" << std::endl;
+
+    std::cout << "nr of splice junctions across all samples in user input: " << mm_sj_counts.size() << std::endl;
+    // for (auto& it : mm_sj_counts)
+    // {
+    //     std::cout << it.first << " : " << it.second << std::endl;
+    // }
+    std::cout << "FINISHED PARSING" << std::endl;
 
 }
