@@ -6,25 +6,16 @@
 
 
 // initialize a new StitchedER with one ER in it
-//TODO maybe just pass the BedGraphRow object instead
-StitchedER::StitchedER(uint64_t start_, uint64_t end_, int er_id_, unsigned int length_, double coverage_)
+StitchedER::StitchedER(const BedGraphRow& expressed_region, unsigned int er_id)
 {
-    start = start_;
-    end = end_;
-    er_ids = {er_id_};
-    across_er_coverage = coverage_;
-    all_coverages = {std::make_pair(length_, coverage_)};
-    total_length = length_;
+    start = expressed_region.start;
+    end = expressed_region.end;
+    er_ids = {er_id};
+    across_er_coverage = expressed_region.coverage;
+    all_coverages = {std::make_pair(expressed_region.length, expressed_region.coverage)};
+    total_length = expressed_region.length;
 }
 
-void StitchedER::append(unsigned int er_id,unsigned int length, double coverage)
-{
-    er_ids.push_back(er_id);
-    all_coverages.push_back({std::make_pair(length, coverage)});
-    across_er_coverage = get_avg_coverage();
-    total_length += length;
-
-}
 // later change to add weight / memory
 double StitchedER::get_avg_coverage(){
     double sum = 0;
@@ -36,5 +27,16 @@ double StitchedER::get_avg_coverage(){
     }
     return sum / total_length;
 }
+
+void StitchedER::append(unsigned int er_id,unsigned int length, double coverage)
+{
+    er_ids.push_back(er_id);
+    all_coverages.push_back({std::make_pair(length, coverage)});
+    across_er_coverage = this->get_avg_coverage();
+    total_length += length;
+    end += length; // TODO check that this is the same as end = er.end!
+
+}
+
 
 

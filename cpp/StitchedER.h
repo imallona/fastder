@@ -17,9 +17,10 @@ public:
     // MEMBER FUNCTIONS
     StitchedER() = default;
 
-    StitchedER(uint64_t start_, uint64_t end_, int er_id_, unsigned int length_, double coverage_);
+    StitchedER(const BedGraphRow& expressed_region, unsigned int er_id);
     void append(unsigned int er_id,unsigned int length, double coverage);
     double get_avg_coverage();
+
     //bool is_similar(double val1, double val2);
 
 
@@ -33,4 +34,16 @@ public:
     uint64_t start; //TODO convert to uint64_t?
     uint64_t end;
 
+
+    // overload output operator for SJRow
+    friend std::ostream& operator<< (std::ostream& os, const StitchedER& stitched_er)
+    {
+
+        for (unsigned int i = 0; i < stitched_er.er_ids.size(); i++)
+        {
+            os << i << "\t" << "(" <<  stitched_er.all_coverages[i].first <<"," << stitched_er.all_coverages[i].second << ")" << std::endl;
+        }
+        return os << stitched_er.across_er_coverage << "\t" << stitched_er.start << "\t" << stitched_er.end << "\t" << stitched_er.total_length << std::endl;
+
+    }
 };

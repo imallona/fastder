@@ -5,6 +5,14 @@
 
 #ifndef FASTDER_BEDGRAPHROW_H
 #define FASTDER_BEDGRAPHROW_H
+
+#include <string>
+#include <cstdint>
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <BedGraphRow.h>
 #include <cstdint>
 
 #endif //FASTDER_BEDGRAPHROW_H

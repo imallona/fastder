@@ -5,8 +5,9 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
-#include "BedGraphRow.h"
+#include <BedGraphRow.h>
 #include <cstdint>
+
 
 // constructor with arguments
 BedGraphRow::BedGraphRow(std::string _chrom, uint64_t _start, uint64_t _end, double _coverage) : chrom(_chrom),

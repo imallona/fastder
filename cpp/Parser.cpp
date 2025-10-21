@@ -129,7 +129,7 @@ void Parser::read_mm(std::string filename) {
             unsigned int sj_id, mm_id, count;
 
             if (!(iss >> sj_id >> mm_id >> count)){
-                std::cout << "malformed line in MM file: " << line << std::endl;
+                //std::cout << "malformed line in MM file: " << line << std::endl;
                 continue;
             }
 
@@ -274,13 +274,15 @@ void Parser::search_directory() {
         // read RR file
         if (filename.find("ALL.RR") != std::string::npos) {
             std::cout << "RR file" << std::endl;
-            //read_rr(filename);
+            read_rr(filename);
 
         }
-
-        else if (filename.find("ALL.MM") != std::string::npos) {
+        // don't read in cached MM files as regular MM files!
+        else if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
             std::cout << "MM file"<< std::endl;
-            //read_mm(filename);
+            // TODO change back read_mm(filename);
+            read_mm_cached_always(filename);
+
         }
 
         else if (filename.find(".bedGraph") != std::string::npos) {
@@ -325,4 +327,78 @@ void Parser::search_directory() {
     // }
     std::cout << "FINISHED PARSING" << std::endl;
 
+}
+
+
+// CACHE STUFF
+
+namespace fs = std::filesystem;
+
+// Pick where to store the cache (next to the source, simple)
+static fs::path mm_cache_path(const fs::path& src) {
+    //return mm_path.parent_path() / (mm_path.filename().string() + ".mmcache");
+    if (src.extension() == ".mmcache") return src;      // already a cache
+    fs::path cache = src;
+    cache += ".mmcache";                                // keep original name + add suffix
+    // Alternatively: cache.replace_extension(".mmcache"); // if you want to replace .MM
+    return cache;
+}
+
+// --- serialize your parsed result (mm_sj_counts) ---
+void Parser::save_mm_cache_(const fs::path& cache) const {
+    std::ofstream out(cache, std::ios::binary);
+    if (!out) throw std::runtime_error("Cannot open cache for write: " + cache.string());
+
+    // small header: magic + version (helps future-proofing)
+    const uint32_t magic = 0x4D4D4348; // "MMCH"
+    const uint32_t version = 1;
+    out.write((char*)&magic, sizeof(magic));
+    out.write((char*)&version, sizeof(version));
+
+    uint64_t n = mm_sj_counts.size();
+    out.write((char*)&n, sizeof(n));
+    for (const auto& [sj_id, count] : mm_sj_counts) {
+        out.write((char*)&sj_id,  sizeof(sj_id));   // unsigned int
+        out.write((char*)&count,  sizeof(count));   // unsigned int
+    }
+}
+
+bool Parser::load_mm_cache_(const fs::path& cache) {
+    std::ifstream in(cache, std::ios::binary);
+    if (!in) return false;
+
+    uint32_t magic=0, version=0;
+    in.read((char*)&magic, sizeof(magic));
+    in.read((char*)&version, sizeof(version));
+    if (magic != 0x4D4D4348 || version != 1) return false;
+
+    uint64_t n=0;
+    in.read((char*)&n, sizeof(n));
+    mm_sj_counts.clear();
+    mm_sj_counts.reserve(n);
+    for (uint64_t i=0; i<n; ++i) {
+        unsigned int key, val;
+        in.read((char*)&key, sizeof(key));
+        in.read((char*)&val, sizeof(val));
+        mm_sj_counts[key] = val;
+    }
+    return true;
+}
+
+// Call this instead of read_mm(filename)
+void Parser::read_mm_cached_always(const std::string& filename) {
+    fs::path mm_path = filename;
+    fs::path cache   = mm_cache_path(mm_path);
+
+    if (fs::exists(cache)) {
+        std::cout << "Loading MM cache: " << cache << std::endl;
+        if (load_mm_cache_(cache)) return;           // done
+        std::cout << "Cache corrupt; rebuilding…" << std::endl;
+    }
+
+    // First run (no cache) or cache unreadable: parse once, then save
+    std::cout << "Parsing MM and creating cache…" << std::endl;
+    read_mm(filename);               // fills mm_sj_counts
+    save_mm_cache_(cache);
+    std::cout << "Cached at: " << cache << std::endl;
 }
