@@ -9,7 +9,7 @@
 #include <cstdint>
 
 // constructor with arguments
-BedGraphRow::BedGraphRow(std::string _chrom, unsigned int _start, unsigned int _end, double _coverage) : chrom(_chrom),
+BedGraphRow::BedGraphRow(std::string _chrom, uint64_t _start, uint64_t _end, double _coverage) : chrom(_chrom),
     start(_start), end(_end), coverage(_coverage), total_reads(0), length(_end - _start)
 {
 }

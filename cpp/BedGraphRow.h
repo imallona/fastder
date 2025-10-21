@@ -13,8 +13,8 @@ class BedGraphRow
 {
 public:
     std::string chrom;
-    unsigned int start;
-    unsigned int end;
+    uint64_t start;
+    uint64_t end;
     double coverage; // normalized coverage by CPM
     unsigned int total_reads; // number of reads spanning across the bin, total_reads = length * coverage
     unsigned int length;
@@ -22,7 +22,7 @@ public:
 
 
     BedGraphRow() = default;
-    BedGraphRow(std::string chrom, unsigned int start, unsigned int end, double coverage);
+    BedGraphRow(std::string chrom, uint64_t start, uint64_t end, double coverage);
     void print() const;
     void normalize(const uint64_t library_size);
 

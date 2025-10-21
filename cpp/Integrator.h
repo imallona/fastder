@@ -9,16 +9,22 @@
 #endif //MLS_INTEGRATOR_H
 
 #include <StitchedER.h>
+#include <SJRow.h>
+#include <BedGraphRow.h>
 
 class Integrator
 {
     public:
     Integrator() = default;
 
-    void stitch_up(std::unordered_map<unsigned int, unsigned int>& mm_sj_counts);
+    void stitch_up(const std::vector<BedGraphRow>& expressed_regions, const std::unordered_map<unsigned int, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj);
+    bool within_threshold(double val1, double val2);
+    bool within_threshold(uint64_t val1, uint64_t val2);
+    bool is_similar(const StitchedER& most_recent_er, const BedGraphRow& expressed_region, const SJRow& current_sj);
 
 
     // MEMBERS
     std::vector<StitchedER> stitched_ERs;
+
 
 };

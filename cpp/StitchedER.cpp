@@ -4,21 +4,37 @@
 
 #include "StitchedER.h"
 
+
+// initialize a new StitchedER with one ER in it
+//TODO maybe just pass the BedGraphRow object instead
+StitchedER::StitchedER(uint64_t start_, uint64_t end_, int er_id_, unsigned int length_, double coverage_)
+{
+    start = start_;
+    end = end_;
+    er_ids = {er_id_};
+    across_er_coverage = coverage_;
+    all_coverages = {std::make_pair(length_, coverage_)};
+    total_length = length_;
+}
+
+void StitchedER::append(unsigned int er_id,unsigned int length, double coverage)
+{
+    er_ids.push_back(er_id);
+    all_coverages.push_back({std::make_pair(length, coverage)});
+    across_er_coverage = get_avg_coverage();
+    total_length += length;
+
+}
 // later change to add weight / memory
 double StitchedER::get_avg_coverage(){
     double sum = 0;
-    unsigned int total_length = 0;
-    for (auto er : this->all_coverages){
+    unsigned int full_length = 0;
+    for (auto& er : this->all_coverages){
         sum += er.first * er.second; // weighted sum of avg coverages across ERs
-        total_length += er.second;
+        full_length += er.first;
 
     }
     return sum / total_length;
 }
-// function that calculates relative match with a tolerance of +/- 5%
-bool StitchedER::is_similar(double val1, double val2){
-    double tolerance_bottom = val1 * 0.95;
-    double tolerance_top = val1 * 1.05;
-    return val2 >= tolerance_bottom && val2 <= tolerance_top;
-}
+
 

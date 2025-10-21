@@ -4,7 +4,7 @@
 
 #include "SJRow.h"
 
-SJRow::SJRow(std::string _chrom, int _start, int _end, int _length, char _strand, bool _annotated,
+SJRow::SJRow(std::string _chrom, uint64_t _start, uint64_t _end, int _length, char _strand, bool _annotated,
              std::string _left_motif, std::string _right_motif, std::string _left_annotated, std::string _right_annotated) {
     chrom = _chrom;
     start = _start;

@@ -25,7 +25,7 @@ public:
     std::string path;
     std::vector<std::vector<BedGraphRow>> all_bedgraphs; //TODO maybe change to unordered map with key = sample id, value = bedgraph of the sample?
 
-    // store RR file for all splice junctions
+    // store RR info for each splice junctions
     std::vector<SJRow> rr_all_sj;
 
     // store Market Matrix (MM) file for one sample

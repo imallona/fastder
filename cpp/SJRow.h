@@ -8,14 +8,14 @@
 #include <sstream>
 #ifndef FASTDER_SPLICE_JUNCTION_H
 #define FASTDER_SPLICE_JUNCTION_H
-
+#include <cstdint>
 
 class SJRow
 {
 public:
     std::string chrom;
-    unsigned int start;
-    unsigned int end;
+    uint64_t start;
+    uint64_t end;
     unsigned int length;
     bool strand; // 1 = +, 0 = -
     bool annotated; // 0 or 1
@@ -26,7 +26,7 @@ public:
 
     // constructor
     SJRow() = default;
-    SJRow(std::string _chrom, int _start, int _end, int _length, char _strand, bool _annotated,
+    SJRow(std::string _chrom, uint64_t _start, uint64_t _end, int _length, char _strand, bool _annotated,
         std::string _left_motif, std::string _right_motif, std::string _left_annotated, std::string _right_annotated);
 
     // overload input operator for SJRow
