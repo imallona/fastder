@@ -39,6 +39,7 @@ int main() {
         averager.expressed_regions[i].print();
     }
     std::cout << "*****************************" << std::endl;
+    std::cout << " nr of sj = " << parser.mm_sj_counts.size() << std::endl;
     auto it = parser.mm_sj_counts.begin();
     for (int i = 0; i  < 20; ++i)
     {

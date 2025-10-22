@@ -13,14 +13,14 @@ Integrator::Integrator()
 
 // function that calculates relative match with a tolerance of +/- 5%
 bool Integrator::within_threshold(double val1, double val2){
-    double tolerance_bottom = val1 * 0.95;
-    double tolerance_top = val1 * 1.05;
+    double tolerance_bottom = val1 * (1 - tolerance);
+    double tolerance_top = val1 * (1 + tolerance);
     return val2 >= tolerance_bottom && val2 <= tolerance_top;
 }
 
 bool Integrator::within_threshold(uint64_t val1, uint64_t val2){
-    double tolerance_bottom = val1 * 0.95;
-    double tolerance_top = val1 * 1.05;
+    double tolerance_bottom = val1 * (1 - tolerance);
+    double tolerance_top = val1 * (1 + tolerance);
     return val2 >= tolerance_bottom && val2 <= tolerance_top;
 }
 
@@ -39,7 +39,7 @@ bool Integrator::sj_too_far_back(const uint64_t most_recent_er_end, const uint64
     && !within_threshold(most_recent_er_end, sj_start);
 }
 
-void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, const std::unordered_map<unsigned int, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj)
+void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, const std::map<unsigned int, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj)
 {
 
     StitchedER er1 = StitchedER(expressed_regions[0], 0); // define the first StitchedER, currently consisting of 1 ER
@@ -49,10 +49,6 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
     // iterate over expressed regions
     for (unsigned int i = 0; i < expressed_regions.size(); ++i)
     {
-        std::cout << "******************************" << std::endl;
-        std::cout << rr_all_sj[current_sj->first] << std::endl;
-        std::cout << stitched_ERs.back() << std::endl;
-        std::cout << "******************************" << std::endl;
         const auto& expressed_region = expressed_regions[i];
         StitchedER& most_recent_er = stitched_ERs.back(); // this is one expressed region right now
 
@@ -62,15 +58,16 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
             expressed_region.print();
             most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
             std::cout << "STITCHED region " << i << std::endl;
+            std::cout << stitched_ERs.back() << std::endl;
             // move to next SJ
             ++current_sj;
         }
 
-        else if (sj_too_far_back(most_recent_er.end, rr_all_sj[current_sj->second].start))
+        else if (sj_too_far_back(most_recent_er.end, rr_all_sj[current_sj->first].start))
         {   // if the current sj is too far back, move to the next one
             while (true)
             {
-                if (!sj_too_far_back(most_recent_er.end, rr_all_sj[current_sj->second].start))
+                if (!sj_too_far_back(most_recent_er.end, rr_all_sj[current_sj->first].start))
                 {
                     break;
                 }

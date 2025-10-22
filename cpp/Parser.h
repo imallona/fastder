@@ -41,7 +41,7 @@ public:
     // std::unordered_map<unsigned int, std::vector<std::pair<unsigned int, unsigned int>>> mm_by_samples;
 
     //TODO use uint64_t instead for the sj_id
-    std::unordered_map<unsigned int, unsigned int> mm_sj_counts; // <sj_id, count> map of sj occurring in samples part of the user input
+    std::map<unsigned int, unsigned int> mm_sj_counts; // <sj_id, count> ordered by sj_id, map of sj occurring in samples part of the user input
 
     std::vector<std::pair<unsigned int, std::string>> rail_id_to_ext_id; // <rail_id, external_id> for all samples in the dataset
 

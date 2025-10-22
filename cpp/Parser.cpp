@@ -110,6 +110,7 @@ void Parser::read_mm(std::string filename) {
         }
         std::string line;
         bool seen_header = false;
+        auto sj_id_prev = 0;
         while (std::getline(file, line))
         {
             // read in line by line
@@ -145,11 +146,16 @@ void Parser::read_mm(std::string filename) {
 
             // add count if the mm was found and TODO if it's part of chromosome 19
             //std::cout << rr_all_sj[sj_id].chrom << " for splice junction " << sj_id << std::endl;
-            if (it != rail_id_to_mm_id.end() && rr_all_sj[sj_id].chrom == "chr19")
+
+            if (it != rail_id_to_mm_id.end() && rr_all_sj[sj_id].chrom == "chr19") // rail_id_to_mm_id has <rail_id, mm_id> mapping
             {
+
+                assert(rr_all_sj[sj_id].start >= rr_all_sj[sj_id_prev].start || rr_all_sj[sj_id].end >= rr_all_sj[sj_id_prev].end);
                 //std::cout << it->first << " : " << it->second << std::endl;
+                //<rail_id, mm_id> mapping
                 //std::cout << rr_all_sj[sj_id] << std::endl;
                 mm_sj_counts[sj_id] += count; // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
+                sj_id_prev = sj_id;
 
             }
         }
@@ -378,7 +384,7 @@ bool Parser::load_mm_cache_(const fs::path& cache) {
     uint64_t n=0;
     in.read((char*)&n, sizeof(n));
     mm_sj_counts.clear();
-    mm_sj_counts.reserve(n);
+    //mm_sj_counts.reserve(n);
     for (uint64_t i=0; i<n; ++i) {
         unsigned int key, val;
         in.read((char*)&key, sizeof(key));

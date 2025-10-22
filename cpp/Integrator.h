@@ -11,13 +11,14 @@
 #include <StitchedER.h>
 #include <SJRow.h>
 #include <BedGraphRow.h>
+#include <map>
 
 class Integrator
 {
     public:
     Integrator();
 
-    void stitch_up(const std::vector<BedGraphRow>& expressed_regions, const std::unordered_map<unsigned int, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj);
+    void stitch_up(const std::vector<BedGraphRow>& expressed_regions, const std::map<unsigned int, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj);
     bool within_threshold(double val1, double val2);
     bool within_threshold(uint64_t val1, uint64_t val2);
     bool is_similar(const StitchedER& most_recent_er, const BedGraphRow& expressed_region, const SJRow& current_sj);
@@ -26,6 +27,7 @@ class Integrator
 
     // MEMBERS
     std::vector<StitchedER> stitched_ERs;
+    double tolerance = 0.2;
 
 
 };
