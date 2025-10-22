@@ -12,7 +12,7 @@
 int main() {
 
     // parse files
-    std::string directory = "../data";
+    std::string directory = "../data/chr_19";
     std::cout << "Enter directory name: ";
     //std::cin >> directory;
 
@@ -31,9 +31,9 @@ int main() {
 
     // get expressed regions
     averager.find_ERs(0.25, 5);
-    std::cout << averager.expressed_regions.size() << std::endl;
+    //std::cout << averager.expressed_regions.size() << std::endl;
     std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "total_reads" <<  "\t" << "length" << std::endl;
-
+    std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
     for (int i = 0; i  < 20; ++i)
     {
         averager.expressed_regions[i].print();

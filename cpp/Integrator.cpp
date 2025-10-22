@@ -61,6 +61,7 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
         {
             expressed_region.print();
             most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
+            std::cout << "STITCHED region " << i << std::endl;
             // move to next SJ
             ++current_sj;
         }

@@ -143,10 +143,12 @@ void Parser::read_mm(std::string filename) {
                 return p.second == mm_id;
             });
 
-            // add count if the mm was found
-            if (it != rail_id_to_mm_id.end())
+            // add count if the mm was found and TODO if it's part of chromosome 19
+            //std::cout << rr_all_sj[sj_id].chrom << " for splice junction " << sj_id << std::endl;
+            if (it != rail_id_to_mm_id.end() && rr_all_sj[sj_id].chrom == "chr19")
             {
                 //std::cout << it->first << " : " << it->second << std::endl;
+                //std::cout << rr_all_sj[sj_id] << std::endl;
                 mm_sj_counts[sj_id] += count; // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
 
             }
@@ -238,6 +240,12 @@ void Parser::search_directory() {
             read_url_csv(filename);
             contains_ids = true;
         }
+        // read RR file
+        else if (filename.find("ALL.RR") != std::string::npos) {
+            std::cout << "RR file" << std::endl;
+            read_rr(filename);
+
+        }
 
         // collect all bedgraph files to later fill up rail_id_to_mm_id
         if (filename.find(".bedGraph") != std::string::npos)
@@ -271,14 +279,9 @@ void Parser::search_directory() {
         std::string filename = entry.path().string();
 
         //std::cout << filename << std::endl;
-        // read RR file
-        if (filename.find("ALL.RR") != std::string::npos) {
-            std::cout << "RR file" << std::endl;
-            read_rr(filename);
 
-        }
         // don't read in cached MM files as regular MM files!
-        else if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
+        if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
             std::cout << "MM file"<< std::endl;
             // TODO change back read_mm(filename);
             read_mm_cached_always(filename);
@@ -330,26 +333,26 @@ void Parser::search_directory() {
 }
 
 
-// CACHE STUFF
+// CACHING MM FILE
 
 namespace fs = std::filesystem;
 
-// Pick where to store the cache (next to the source, simple)
+//choose caching path
 static fs::path mm_cache_path(const fs::path& src) {
     //return mm_path.parent_path() / (mm_path.filename().string() + ".mmcache");
-    if (src.extension() == ".mmcache") return src;      // already a cache
+    if (src.extension() == ".mmcache") return src;
     fs::path cache = src;
-    cache += ".mmcache";                                // keep original name + add suffix
-    // Alternatively: cache.replace_extension(".mmcache"); // if you want to replace .MM
+    cache += ".mmcache";
+
     return cache;
 }
 
-// --- serialize your parsed result (mm_sj_counts) ---
+//serialize parsed result (mm_sj_counts)
 void Parser::save_mm_cache_(const fs::path& cache) const {
     std::ofstream out(cache, std::ios::binary);
     if (!out) throw std::runtime_error("Cannot open cache for write: " + cache.string());
 
-    // small header: magic + version (helps future-proofing)
+    //magic + version (helps future-proofing)
     const uint32_t magic = 0x4D4D4348; // "MMCH"
     const uint32_t version = 1;
     out.write((char*)&magic, sizeof(magic));
@@ -385,7 +388,7 @@ bool Parser::load_mm_cache_(const fs::path& cache) {
     return true;
 }
 
-// Call this instead of read_mm(filename)
+//instead of read_mm(filename)
 void Parser::read_mm_cached_always(const std::string& filename) {
     fs::path mm_path = filename;
     fs::path cache   = mm_cache_path(mm_path);
