@@ -53,11 +53,11 @@ int main() {
     std::cout << "stitched ER index" << "\t" << "(" <<  "length" <<"," << "average coverage" << ")" << std::endl;
     std::cout << "stitched_er.across_er_coverage" << "\t" << "stitched_er.start" << "\t" << "stitched_er.end" << "\t" << "stitched_er.total_length" << std::endl;
 
-
-    for (auto & stitched_er : integrator.stitched_ERs)
-    {
-        std::cout << stitched_er << std::endl;
-    }
+    std::cout << "number of stitched regions = "  << integrator.stitched_ERs.size() << std::endl;
+    // for (auto & stitched_er : integrator.stitched_ERs)
+    // {
+    //     std::cout << stitched_er << std::endl;
+    // }
 
     return 0;
 }

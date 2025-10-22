@@ -27,7 +27,7 @@ class Integrator
 
     // MEMBERS
     std::vector<StitchedER> stitched_ERs;
-    double tolerance = 0.2;
+    double tolerance = 0.1;
 
 
 };

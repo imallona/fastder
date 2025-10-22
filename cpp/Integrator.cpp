@@ -46,42 +46,46 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
     stitched_ERs.push_back(er1); //TODO MAYBE NOT YET, ONLY APPEND WHEN IT'S FINISHED
     auto current_sj = mm_sj_counts.begin(); //iterator over the vector of SJ ids
     std::cout << stitched_ERs.front() << std::endl;
+    int max_stitched_ers = 0;
     // iterate over expressed regions
     for (unsigned int i = 0; i < expressed_regions.size(); ++i)
     {
-        const auto& expressed_region = expressed_regions[i];
-        StitchedER& most_recent_er = stitched_ERs.back(); // this is one expressed region right now
+        //only compare if we aren't at the last SJ yet
+        if (current_sj != mm_sj_counts.end()){
 
-        // get rr_all_sj, which is a vector of SJRows
-        if (is_similar(most_recent_er, expressed_region, rr_all_sj[current_sj->first]))
-        {
-            expressed_region.print();
-            most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
-            std::cout << "STITCHED region " << i << std::endl;
-            std::cout << stitched_ERs.back() << std::endl;
-            // move to next SJ
-            ++current_sj;
-        }
+            const auto& expressed_region = expressed_regions[i];
+            StitchedER& most_recent_er = stitched_ERs.back(); // this is one expressed region right now
 
-        else if (sj_too_far_back(most_recent_er.end, rr_all_sj[current_sj->first].start))
-        {   // if the current sj is too far back, move to the next one
-            while (true)
+
+            while (current_sj != mm_sj_counts.end() && sj_too_far_back(most_recent_er.end, rr_all_sj[current_sj->first].start))
             {
-                if (!sj_too_far_back(most_recent_er.end, rr_all_sj[current_sj->first].start))
-                {
-                    break;
-                }
                 ++current_sj;
             }
+            // get rr_all_sj, which is a vector of SJRows
+            if (is_similar(most_recent_er, expressed_region, rr_all_sj[current_sj->first]))
+            {
+                //expressed_region.print();
+                most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
+                std::cout << "STITCHED region " << i << std::endl;
+                std::cout << stitched_ERs.back() << std::endl;
+                // move to next SJ
+                ++current_sj;
+                if (max_stitched_ers < stitched_ERs.back().er_ids.size())
+                {
+                    max_stitched_ers = stitched_ERs.back().er_ids.size();
+                }
+            }
+
+
+            // current ER doesn't belong to any existing ERs --> start a new ER
+            else
+            {
+                stitched_ERs.push_back(StitchedER(expressed_region, i));
+            }
+
+
         }
-
-        // current ER doesn't belong to any existing ERs --> start a new ER
-        else
-        {
-            stitched_ERs.push_back(StitchedER(expressed_region, i));
-        }
-
-
     }
+    std::cout << "max_stitched_ers =" << max_stitched_ers<< std::endl;
 
     }
