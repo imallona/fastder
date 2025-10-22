@@ -17,7 +17,10 @@ BedGraphRow::BedGraphRow(std::string _chrom, uint64_t _start, uint64_t _end, dou
 
 // print a BedGraphRow
 void BedGraphRow::print() const {
-    std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t" << total_reads <<  "\t" << length << std::endl;
+    std::cout << chrom << "\t" << start << "\t" << end << "\t" << coverage << "\t";
+    if (total_reads > 0)
+        std::cout << total_reads <<  "\t";
+    std::cout << length << std::endl;
 }
 
 

@@ -70,6 +70,8 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
                 std::cout << stitched_ERs.back() << std::endl;
                 // move to next SJ
                 ++current_sj;
+
+                // find maximum number of ERs that were stitched together
                 if (max_stitched_ers < stitched_ERs.back().er_ids.size())
                 {
                     max_stitched_ers = stitched_ERs.back().er_ids.size();
