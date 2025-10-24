@@ -21,11 +21,11 @@ double StitchedER::get_avg_coverage(){
     double sum = 0;
     unsigned int full_length = 0;
     for (auto& er : this->all_coverages){
-        sum += er.first * er.second; // weighted sum of avg coverages across ERs
+        sum += (er.first * er.second); // weighted sum of avg coverages across ERs
         full_length += er.first;
 
     }
-    return sum / total_length;
+    return sum / full_length;
 }
 
 void StitchedER::append(unsigned int er_id,unsigned int length, double coverage)

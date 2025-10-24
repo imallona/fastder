@@ -15,11 +15,11 @@
 class Averager {
 
     public:
-        void compute_mean_coverage();
+        void compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages);
         //bool in_interval(double current_avg, double bp_coverage);
         void find_ERs(double threshold, int min_length);
-        void get_all_per_base_coverage(const std::vector<std::vector<BedGraphRow>>& all_bedgraphs);
-        static void compute_per_base_coverage(const BedGraphRow& row, std::unordered_map<std::string, std::vector<double>>& per_base_coverage);
+        //void get_all_per_base_coverage(const std::vector<std::vector<BedGraphRow>>& all_bedgraphs);
+        //static void compute_per_base_coverage(const BedGraphRow& row, std::unordered_map<std::string, std::vector<double>>& per_base_coverage);
         void stitch_up();
 
         // MEMBER VARIABLES
@@ -31,7 +31,7 @@ class Averager {
 
         std::unordered_map<std::string, std::vector<double>> mean_coverage; //key = chromosome, value = BedGraphRow
         std::vector<BedGraphRow> expressed_regions;
-        std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages;
+        //std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages;
         // one unordered map per sample with keys = chromosome nr, values = vector of per-base coverage for that chromosome
         // store all the individual sample maps in a vector (since sample identity doesn't matter anymore later on)
 

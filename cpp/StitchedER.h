@@ -31,7 +31,7 @@ public:
     double across_er_coverage; // avg (weighted) coverage of all exons that are part of the stitched ER so far
     std::vector<std::pair<unsigned int, double>> all_coverages; // stores a pair of er length (= weight) + normalized average coverage of the er
     unsigned int total_length;
-    uint64_t start; //TODO convert to uint64_t?
+    uint64_t start;
     uint64_t end;
 
 

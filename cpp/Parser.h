@@ -28,12 +28,15 @@ public:
     void normalize(const unsigned int& library_size);
     void read_url_csv(std::string filename);
     void fill_up(std::vector<std::string> bedgraph_files);
+    bool chr_permitted(std::string chr) const;
+
+    static void compute_per_base_coverage(const BedGraphRow& row, std::unordered_map<std::string, std::vector<double>>& per_base_coverage);
     //void get_per_base_coverages();
     // TODO add function get_rail_id_from_filename(filename)?
 
     std::string path;
     std::vector<std::vector<BedGraphRow>> all_bedgraphs; //TODO maybe change to unordered map with key = sample id, value = bedgraph of the sample?
-
+    std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages;
     // store RR info for each splice junctions
     std::vector<SJRow> rr_all_sj;
 
@@ -46,6 +49,34 @@ public:
     std::vector<std::pair<unsigned int, std::string>> rail_id_to_ext_id; // <rail_id, external_id> for all samples in the dataset
 
     std::vector<std::pair<unsigned int, unsigned int>> rail_id_to_mm_id; // <rail_id, mm_id> mapping
+
+
+    const std::vector<std::string> permitted_chromosomes =  {
+        "chr1",
+        "chr2",
+        // "chr3",
+        // "chr4",
+        // "chr5",
+        // "chr6",
+        // "chr7",
+        // "chr8",
+        // "chr9",
+        // "chr10",
+        // "chr11",
+        // "chr12",
+        // "chr13",
+        // "chr14",
+        // "chr15",
+        // "chr16",
+        // "chr17",
+         //"chr18",
+         //"chr19",
+        // "chr20",
+        // "chr21",
+        // "chr22",
+        // "chrX",
+    };
+
 
 };
 
