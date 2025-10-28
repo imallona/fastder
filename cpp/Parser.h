@@ -28,7 +28,7 @@ public:
     void normalize(const unsigned int& library_size);
     void read_url_csv(std::string filename);
     void fill_up(std::vector<std::string> bedgraph_files);
-    bool chr_permitted(std::string chr) const;
+    [[nodiscard]] bool chr_permitted(const std::string& chr) const;
 
     static void compute_per_base_coverage(const BedGraphRow& row, std::unordered_map<std::string, std::vector<double>>& per_base_coverage);
     //void get_per_base_coverages();
@@ -44,7 +44,7 @@ public:
     // std::unordered_map<unsigned int, std::vector<std::pair<unsigned int, unsigned int>>> mm_by_samples;
 
     //TODO use uint64_t instead for the sj_id
-    std::map<unsigned int, unsigned int> mm_sj_counts; // <sj_id, count> ordered by sj_id, map of sj occurring in samples part of the user input
+    std::map<uint64_t, unsigned int> mm_sj_counts; // <sj_id, count> ordered by sj_id, map of sj occurring in samples part of the user input
 
     std::vector<std::pair<unsigned int, std::string>> rail_id_to_ext_id; // <rail_id, external_id> for all samples in the dataset
 

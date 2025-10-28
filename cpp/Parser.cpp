@@ -22,15 +22,16 @@ Parser::Parser(std::string _path) {
 }
 
 // function to prevent reading in Y chromosome and quality check chromosomes like ERCC
-bool Parser::chr_permitted(std::string chr) const
+bool Parser::chr_permitted(const std::string& chr) const
 {
-    for (auto& chrom : permitted_chromosomes)
+    for (auto& chrom : this->permitted_chromosomes)
     {
         if (chr == chrom)
         {
             return true;
         }
     }
+
     return false;
 }
 // fill vector with coverage value per bp (since different bedgraphs have different binning intervals)
@@ -120,9 +121,10 @@ void Parser::read_rr(std::string filename)
         }
         SJRow row = SJRow();
         iss >> row;
-        if (chr_permitted(row.chrom)){
-            rr_all_sj.push_back(row);
-        }
+        //if (chr_permitted(row.chrom, false)){
+
+        rr_all_sj.push_back(row);
+        //}
 
 
         //std::cout << row << std::endl;
@@ -167,8 +169,8 @@ void Parser::read_mm(std::string filename) {
             }
 
             // skip invalid lines
-            //uint64_t sj_id;
-            unsigned int sj_id, mm_id, count;
+            uint64_t sj_id;
+            unsigned int mm_id, count;
 
             if (!(iss >> sj_id >> mm_id >> count)){
                 //std::cout << "malformed line in MM file: " << line << std::endl;
@@ -188,7 +190,7 @@ void Parser::read_mm(std::string filename) {
             // add count if the mm was found and if chr is in bedgraph
             //std::cout << rr_all_sj[sj_id].chrom << " for splice junction " << sj_id << std::endl;
 
-            if (it != rail_id_to_mm_id.end() && this->chr_permitted(rr_all_sj[sj_id].chrom )) // rail_id_to_mm_id has <rail_id, mm_id> mapping
+            if (it != rail_id_to_mm_id.end() && this->chr_permitted(rr_all_sj[sj_id].chrom)) // rail_id_to_mm_id has <rail_id, mm_id> mapping
             {
                 // NOTE: this assert won't work with multiple chromosomes!
                 //assert(rr_all_sj[sj_id].start >= rr_all_sj[sj_id_prev].start || rr_all_sj[sj_id].end >= rr_all_sj[sj_id_prev].end);
@@ -196,6 +198,7 @@ void Parser::read_mm(std::string filename) {
                 //<rail_id, mm_id> mapping
                 //std::cout << rr_all_sj[sj_id] << std::endl;
                 assert(rr_all_sj[sj_id].chrom == "chr1" || rr_all_sj[sj_id].chrom == "chr2");
+                //std::cout << rr_all_sj[sj_id] << std::endl;
                 mm_sj_counts[sj_id] += count; // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
                 //sj_id_prev = sj_id;
 
@@ -339,7 +342,7 @@ void Parser::search_directory() {
 
         else if (filename.find(".bedGraph") != std::string::npos) {
             std::cout << "Bedgraph file"<< std::endl;
-
+            //
             uint64_t library_size = 0; // ensure that the number is large enough
             std::vector<BedGraphRow> sample_bedgraph = read_bedgraph(filename, library_size);
             std::unordered_map<std::string, std::vector<double>> per_base_coverage;

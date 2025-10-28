@@ -39,7 +39,7 @@ bool Integrator::sj_too_far_back(const uint64_t most_recent_er_end, const uint64
     && !within_threshold(most_recent_er_end, sj_start);
 }
 
-void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, const std::map<unsigned int, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj)
+void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, const std::map<uint64_t, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj)
 {
 
     StitchedER er1 = StitchedER(expressed_regions[0], 0); // define the first StitchedER, currently consisting of 1 ER
