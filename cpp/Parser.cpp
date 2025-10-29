@@ -115,16 +115,22 @@ void Parser::read_rr(std::string filename)
         rr_all_sj.push_back(row);
 
     }
+    std::cout << "nr of splice junctions in this study: " << rr_all_sj.size() << std::endl;
+    assert(rr_all_sj.size() == 9484210);
+
 
 
 }
 
 
-// pass dictionary all_mm by reference and fill it with keys (sj_id) and values (cumulative count of this sj across samples)
+// create dictionary mm_sj_counts with keys (sj_id) and values (cumulative count of this sj across samples)
+// IMPORTANT: the RR file is NOT sorted by chromosomes!
 void Parser::read_mm(std::string filename) {
 
         std::cout << filename << std::endl;
         //read in file from path
+        // TODO remove:
+        filename = "../data/gtex.junctions.BRAIN.ALL.MM";
         std::ifstream file(filename);
         // max index is 2931 (= nr of samples)
         // min index is 0
@@ -136,9 +142,14 @@ void Parser::read_mm(std::string filename) {
         }
         std::string line;
         bool seen_header = false;
+        uint64_t nr_of_sj, sj_occ_in_samples, nr_of_samples;
         //auto sj_id_prev = 0;
+        uint64_t count_lines = 0;
         while (std::getline(file, line))
         {
+
+
+            ++count_lines;
             // read in line by line
             std::istringstream iss(line);
 
@@ -148,6 +159,9 @@ void Parser::read_mm(std::string filename) {
 
             // allows skipping the first line without a %
             if (!seen_header) {
+                // header: 9484210	2931	699368828, actual #lines = 699368831
+                iss >> nr_of_sj >> nr_of_samples >> sj_occ_in_samples;
+                assert(nr_of_sj == rr_all_sj.size());
                 seen_header = true;
                 continue;
             }
@@ -158,6 +172,7 @@ void Parser::read_mm(std::string filename) {
 
             if (!(iss >> sj_id >> mm_id >> count)){
                 std::cout << "malformed line in MM file: " << line << std::endl;
+                std::cout << line << std::endl;
                 continue;
             }
 
@@ -183,13 +198,14 @@ void Parser::read_mm(std::string filename) {
                 //std::cout << rr_all_sj[sj_id] << std::endl;
                 //assert(rr_all_sj[sj_id].chrom == "chr1" || rr_all_sj[sj_id].chrom == "chr2");
                 //std::cout << rr_all_sj[sj_id] << std::endl;
+
                 mm_sj_counts[sj_id] += count; // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
                 //sj_id_prev = sj_id;
 
             }
         }
-
-
+        std::cout << "nr of lines read in MM file: " << count_lines << std::endl;
+        assert(sj_occ_in_samples <= count_lines);
     }
 
 // parse bigwig URL list csv file
@@ -326,9 +342,8 @@ void Parser::search_directory() {
         // don't read in cached MM files as regular MM files!
         if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
             std::cout << "MM file"<< std::endl;
-            // TODO change back
-            //read_mm(filename);
-            read_mm_cached_always(filename);
+            read_mm(filename);
+            //read_mm_cached_always(filename);
 
         }
 
@@ -359,11 +374,14 @@ void Parser::search_directory() {
 
     }
 
-    std::cout << "nr of splice junctions in permitted chromosomes across all samples in user input: " << mm_sj_counts.size() << std::endl;
+
     // for (auto& it : mm_sj_counts)
     // {
     //     std::cout << it.first << " : " << it.second << std::endl;
     // }
+    std::cout << "MM file"<< std::endl;
+    read_mm("Hi");
+    std::cout << "nr of splice junctions in permitted chromosomes across all samples in user input: " << mm_sj_counts.size() << std::endl;
     std::cout << "FINISHED PARSING" << std::endl;
 
 }

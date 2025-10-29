@@ -33,7 +33,7 @@ public:
     unsigned int total_length;
     uint64_t start;
     uint64_t end;
-
+    std::string chrom;
 
     // overload output operator for SJRow
     friend std::ostream& operator<< (std::ostream& os, const StitchedER& stitched_er)

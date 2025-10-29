@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <Integrator.h>
+
 // constructor
 Integrator::Integrator()
 {
@@ -72,9 +73,8 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
                 std::cout << expressed_regions[most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[current_sj->first].start << ", " << rr_all_sj[current_sj->first].end << " <--> " <<  expressed_region.start << std::endl;
 
                 //expressed_region.print();
-                most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
                 assert(rr_all_sj[current_sj->first].chrom == expressed_region.chrom && expressed_region.chrom == expressed_regions[most_recent_er.er_ids.back()].chrom);
-
+                most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
 
                 std::cout << "STITCHED region: current er_id = " << i << std::endl;
                 std::cout << stitched_ERs.back() << std::endl;
@@ -101,3 +101,33 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
     std::cout << "max_stitched_ers = " << max_stitched_ers<< std::endl;
 
     }
+
+
+void Integrator::write_to_gtf(const std::string& output_path)
+{
+    std::ofstream out(output_path);
+    if (!out.is_open()) {
+        std::cerr << "Error: could not open output file " << output_path << std::endl;
+        return;
+    }
+    // get today's date
+    auto now = std::chrono::system_clock::now();
+    std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(now)};
+    // format as YYYY-MM-DD
+    std::string date = std::format("{:%Y-%m-%d}", ymd);
+
+    // write headers
+    out << "##description: expressed region annotation of genome based on bigwig and MM / RR splice junction information." << std::endl;
+    out << "##provider: FASTDER" << std::endl;
+    out << "##contact: marlehmann@ethz.ch" << std::endl;
+    out << "##format: gtf" << std::endl;
+    out << "##date: " << date << std::endl;
+
+    for (auto& stitched_er : this->stitched_ERs)
+    {
+        GTFRow gtf_row = GTFRow(stitched_er);
+        out << gtf_row << std::endl;
+
+    }
+    out.close();
+}

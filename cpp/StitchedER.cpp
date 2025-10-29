@@ -8,6 +8,7 @@
 // initialize a new StitchedER with one ER in it
 StitchedER::StitchedER(const BedGraphRow& expressed_region, unsigned int er_id)
 {
+    chrom = expressed_region.chrom;
     start = expressed_region.start;
     end = expressed_region.end;
     er_ids = {er_id};
@@ -30,6 +31,7 @@ double StitchedER::get_avg_coverage(){
 
 void StitchedER::append(unsigned int er_id,unsigned int length, double coverage)
 {
+
     er_ids.push_back(er_id);
     all_coverages.push_back({std::make_pair(length, coverage)});
     across_er_coverage = this->get_avg_coverage();

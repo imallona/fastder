@@ -7,6 +7,7 @@
 #include "BedGraphRow.h"
 #include "Parser.h"
 #include "Averager.h"
+#include "GTFRow.h"
 #include "Integrator.h"
 
 int main() {
@@ -53,10 +54,79 @@ int main() {
     std::cout << averager.expressed_regions.size() <<" expressed regions" << std::endl;
     std::cout << "number of stitched regions = "  << integrator.stitched_ERs.size() << std::endl;
     std::cout << "nr of sj in provided data + permitted chromosomes = " << parser.mm_sj_counts.size() << std::endl;
-    // for (auto & stitched_er : integrator.stitched_ERs)
-    // {
-    //     std::cout << stitched_er << std::endl;
-    // }
+    int chr1_count = 0;
+    int chr9_count = 0;
+    int chr19_count = 0;
+    for (auto& sj : parser.mm_sj_counts)
+    {
+        if (parser.rr_all_sj[sj.first].chrom == "chr1")
+        {
+            ++chr1_count;
+        }
+        else if (parser.rr_all_sj[sj.first].chrom == "chr9")
+        {
+            ++chr9_count;
+        }
+        else if (parser.rr_all_sj[sj.first].chrom == "chr19")
+        {
+            ++chr19_count;
+        }
+        else
+        {
+            std::cout << parser.rr_all_sj[sj.first].chrom << std::endl;
+        }
+    }
+    std::cout << "splice junctions in chr 1: " << chr1_count << std::endl;
+    std::cout << "splice junctions in chr 9: " << chr9_count << std::endl;
+    std::cout << "splice junctions in chr 19: " << chr19_count << std::endl;
+    chr1_count = 0;
+    chr9_count = 0;
+    chr19_count = 0;
+    for (auto& er : averager.expressed_regions)
+    {
+        if (er.chrom == "chr1")
+        {
+            ++chr1_count;
+        }
+        else if (er.chrom == "chr9")
+        {
+            ++chr9_count;
+        }
+        else if (er.chrom == "chr19")
+        {
+            ++chr19_count;
+        }
+    }
+    std::cout << "expressed regions in chr 1: " << chr1_count << std::endl;
+    std::cout << "expressed regions in chr 9: " << chr9_count << std::endl;
+    std::cout << "expressed regions in chr 19: " << chr19_count << std::endl;
+
+    chr1_count = 0;
+    chr9_count = 0;
+    chr19_count = 0;
+    for (auto& stitched_er : integrator.stitched_ERs)
+    {
+        if (stitched_er.chrom == "chr1")
+        {
+            ++chr1_count;
+        }
+        else if (stitched_er.chrom == "chr9")
+        {
+            ++chr9_count;
+        }
+        else if (stitched_er.chrom == "chr19")
+        {
+            ++chr19_count;
+        }
+    }
+    std::cout << "stitched regions in chr 1: " << chr1_count << std::endl;
+    std::cout << "stitched regions in chr 9: " << chr9_count << std::endl;
+    std::cout << "stitched regions in chr 19: " << chr19_count << std::endl;
+
+    // convert to GTF format
+    std::string output_path = "../data/output.gtf";
+    integrator.write_to_gtf(output_path);
+
 
     return 0;
 }
