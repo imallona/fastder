@@ -24,10 +24,10 @@ int main() {
 
     // get mean coverage vector
     Averager averager;
-    averager.compute_mean_coverage(parser.all_per_base_coverages);
+    averager.compute_mean_coverage(parser.all_per_base_coverages, parser.chromosome_sequence);
 
     // get expressed regions
-    averager.find_ERs(0.25, 5);
+    averager.find_ERs(0.25, 5, parser.chromosome_sequence);
     //std::cout << averager.expressed_regions.size() << std::endl;
     std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
     std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;

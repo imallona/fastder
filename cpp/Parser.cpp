@@ -114,6 +114,12 @@ void Parser::read_rr(std::string filename)
         // rr_all_sj needs to contain all sj_ids, even those of chromosomes that aren't provided in the bedgraph files --> otherwise the mapping from RR to MM file via sj_id is broken
         rr_all_sj.push_back(row);
 
+        // store the sequence of chromosomes in the RR file --> append chromosome to vector if it's not an element of the vector yet
+        // chromosome_sequence will serve as the key iteration sequence for ALL unordered maps where key = chromosome!
+        if (this->chr_permitted(row.chrom) && std::ranges::find(chromosome_sequence, row.chrom) == chromosome_sequence.end()) {
+            chromosome_sequence.push_back(row.chrom);
+        }
+
     }
     std::cout << "nr of splice junctions in this study: " << rr_all_sj.size() << std::endl;
     assert(rr_all_sj.size() == 9484210);
@@ -180,7 +186,6 @@ void Parser::read_mm(std::string filename) {
             // NEW: cumulative counts of a sj_id across all samples in the input
 
             // find the rail_id based on the mm_id --> only add counts if the mm_id is part of the samples
-
             auto it = std::find_if(rail_id_to_mm_id.begin(), rail_id_to_mm_id.end(), [&] (const auto& p)
             {
                 return p.second == mm_id;
@@ -191,16 +196,9 @@ void Parser::read_mm(std::string filename) {
 
             if (it != rail_id_to_mm_id.end() && this->chr_permitted(rr_all_sj[sj_id].chrom)) // rail_id_to_mm_id has <rail_id, mm_id> mapping
             {
-                // NOTE: this assert won't work with multiple chromosomes!
-                //assert(rr_all_sj[sj_id].start >= rr_all_sj[sj_id_prev].start || rr_all_sj[sj_id].end >= rr_all_sj[sj_id_prev].end);
-                //std::cout << it->first << " : " << it->second << std::endl;
-                //<rail_id, mm_id> mapping
-                //std::cout << rr_all_sj[sj_id] << std::endl;
-                //assert(rr_all_sj[sj_id].chrom == "chr1" || rr_all_sj[sj_id].chrom == "chr2");
-                //std::cout << rr_all_sj[sj_id] << std::endl;
+
 
                 mm_sj_counts[sj_id] += count; // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
-                //sj_id_prev = sj_id;
 
             }
         }

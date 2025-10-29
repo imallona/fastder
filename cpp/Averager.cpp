@@ -14,18 +14,18 @@
 #include "Averager.h"
 
 //compute overall average coverage
-void Averager::compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages)
+void Averager::compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages, const std::vector<std::string>& chromosome_sequence)
 {
 
     //iterate
     std::cout << "#samples = " << all_per_base_coverages.size() << ", #chromosomes = "<< all_per_base_coverages[0].size() << std::endl;
 
-    // iterate over chromosomes
-    for (auto& pair : all_per_base_coverages[0])
+    // iterate over chromosomes. pair.first = chromosome, pair.second = vector of per base coverages of that chromosome
+    for (auto& chrom : chromosome_sequence)
     {
-        std::string chrom = pair.first;
+        std::cout << "COMPUTING MEAN FOR CHROMOSOME " << chrom << std::endl;
         // iterate over values for each chromosome
-        for (unsigned int i = 0; i < pair.second.size(); i++)
+        for (unsigned int i = 0; i < all_per_base_coverages[0][chrom].size(); i++)
         {
             double sum = 0;
             // iterate over all positions i across samples j
@@ -48,7 +48,7 @@ void Averager::compute_mean_coverage(std::vector<std::unordered_map<std::string,
 // }
 
 // identify ERs with coverage > threshold and length > min_length bp
-void Averager::find_ERs(double threshold, int min_length)
+void Averager::find_ERs(double threshold, int min_length, const std::vector<std::string>& chromosome_sequence)
 {
 
     int start = 0;
@@ -58,20 +58,20 @@ void Averager::find_ERs(double threshold, int min_length)
     //if length > 5 and coverage at bp < 5 -> ER has ended, append
     // if coverage at bp > 5 --> add to current ER
     // if coverage < 5 && length < 5: don't count as ER, reset start and average
-
-    for (auto& pair : mean_coverage)
+    //pair.first = chromosome, pair.second = vector of per base coverages of that chromosome
+    for (auto& chrom : chromosome_sequence)
     {
-        for (unsigned int i = 0; i < pair.second.size(); i++)
+        for (unsigned int i = 0; i < mean_coverage[chrom].size(); i++)
         {
-            double coverage = pair.second[i];
+            double coverage =  mean_coverage[chrom][i];
             // coverage is less than threshold
-            if (pair.second[i] <= threshold)
+            if ( mean_coverage[chrom][i] <= threshold)
             {
                 // region at least 5 bp long, append to results
                 if ((i - start) > min_length)
                 {
                     current_avg /= (i - 1 - start);
-                    BedGraphRow expressed_region = BedGraphRow(pair.first, start, i - 1, current_avg);
+                    BedGraphRow expressed_region = BedGraphRow(chrom, start, i - 1, current_avg);
 
                     //expressed_region.print();
                     expressed_regions.push_back(expressed_region);

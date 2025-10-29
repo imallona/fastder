@@ -73,6 +73,8 @@ public:
          //"chrX",
     };
 
+ std::vector<std::string> chromosome_sequence;
+
 
 };
 

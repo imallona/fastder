@@ -44,6 +44,7 @@ bool Integrator::sj_too_far_back(const uint64_t most_recent_er_end, const uint64
 void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, const std::map<uint64_t, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj)
 {
 
+
     StitchedER er1 = StitchedER(expressed_regions[0], 0); // define the first StitchedER, currently consisting of 1 ER
     stitched_ERs.push_back(er1);
     auto current_sj = mm_sj_counts.begin(); // iterator over the vector of sj_id
@@ -73,6 +74,7 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
                 std::cout << expressed_regions[most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[current_sj->first].start << ", " << rr_all_sj[current_sj->first].end << " <--> " <<  expressed_region.start << std::endl;
 
                 //expressed_region.print();
+                // the chromosome that
                 assert(rr_all_sj[current_sj->first].chrom == expressed_region.chrom && expressed_region.chrom == expressed_regions[most_recent_er.er_ids.back()].chrom);
                 most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
 

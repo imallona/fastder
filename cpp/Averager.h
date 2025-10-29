@@ -15,12 +15,8 @@
 class Averager {
 
     public:
-        void compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages);
-        //bool in_interval(double current_avg, double bp_coverage);
-        void find_ERs(double threshold, int min_length);
-        //void get_all_per_base_coverage(const std::vector<std::vector<BedGraphRow>>& all_bedgraphs);
-        //static void compute_per_base_coverage(const BedGraphRow& row, std::unordered_map<std::string, std::vector<double>>& per_base_coverage);
-        void stitch_up();
+        void compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages, const std::vector<std::string>& chromosome_sequence);
+        void find_ERs(double threshold, int min_length, const std::vector<std::string>& chromosome_sequence);
 
         // MEMBER VARIABLES
 

@@ -32,7 +32,7 @@ class Integrator
     std::vector<StitchedER> stitched_ERs;
 
     double coverage_tolerance = 0.1;
-    int position_tolerance = 3;
+    int position_tolerance = 5;
 
 
 };
