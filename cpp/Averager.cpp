@@ -12,40 +12,54 @@
 #include "BedGraphRow.h"
 #include "SJRow.h"
 #include "Averager.h"
+#include <future>
 
-//compute overall average coverage
+
+
+//compute overall mean coverage
 void Averager::compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages, const std::vector<std::string>& chromosome_sequence)
 {
 
-    //iterate
+    // define workers --> use one thread per chromosome
+
+    std::vector<std::future<std::vector<double>>> workers;
+    workers.reserve(chromosome_sequence.size()); //pre-allocate space for workers
+
     std::cout << "#samples = " << all_per_base_coverages.size() << ", #chromosomes = "<< all_per_base_coverages[0].size() << std::endl;
 
-    // iterate over chromosomes. pair.first = chromosome, pair.second = vector of per base coverages of that chromosome
+    // parallel iteration over chromosomes. pair.first = chromosome, pair.second = vector of per base coverages of that chromosome
     for (auto& chrom : chromosome_sequence)
     {
+        workers.push_back(std::async(std::launch::async, [&, chrom]{
         std::cout << "COMPUTING MEAN FOR CHROMOSOME " << chrom << std::endl;
+        std::vector<double> chrom_mean_vector;
         // iterate over values for each chromosome
         for (unsigned int i = 0; i < all_per_base_coverages[0][chrom].size(); i++)
         {
-            double sum = 0;
+            double sum = 0.0;
             // iterate over all positions i across samples j
             for (unsigned int j = 0; j < all_per_base_coverages.size(); j++)
             {
                 // all_per_base_coverages[sample_nr][chromosome][base_pair_position]
                 sum += all_per_base_coverages[j][chrom][i]; //sample j, chromosome chrom, position i
             }
-            mean_coverage[chrom].push_back(sum / all_per_base_coverages.size()); // (sum over coverage at bp i) / (#nof samples)
+            chrom_mean_vector.push_back(sum / all_per_base_coverages.size()); // (sum over coverage at bp i) / (#nof samples)
         }
+            return chrom_mean_vector;
+        }));
+
+    }
+    //avoid using mutexes, just do single-threaded merge
+    // TODO later use >1 thread per chromosome
+    for (int k = 0; k < workers.size(); k++)
+    {
+        std::string chrom = chromosome_sequence[k];
+        mean_coverage[chrom] = workers[k].get(); //get result
+        assert(all_per_base_coverages[0].at(chrom).size() == mean_coverage[chrom].size());
     }
 
 }
 
-// returns true if (1 - tolerance) * 10 <= bp_coverage <= (1 + tolerance) * 10 == 8 <= bp_coverage <= 12 for tolerance = 0.2
-// bool Averager::in_interval(double current_avg, double bp_coverage)
-// {
-//     // tolerance of +/- 20 %
-//     return bp_coverage >= 0.8 * current_avg && bp_coverage <= 1.2 * current_avg;
-// }
 
 // identify ERs with coverage > threshold and length > min_length bp
 void Averager::find_ERs(double threshold, int min_length, const std::vector<std::string>& chromosome_sequence)
@@ -74,7 +88,7 @@ void Averager::find_ERs(double threshold, int min_length, const std::vector<std:
                     BedGraphRow expressed_region = BedGraphRow(chrom, start, i - 1, current_avg);
 
                     //expressed_region.print();
-                    expressed_regions.push_back(expressed_region);
+                    expressed_regions[chrom].push_back(expressed_region);
 
                 }
                 //region too short to be appended, reset start and current avg

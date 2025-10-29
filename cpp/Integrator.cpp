@@ -41,68 +41,70 @@ bool Integrator::sj_too_far_back(const uint64_t most_recent_er_end, const uint64
     && !within_threshold(most_recent_er_end, sj_start);
 }
 
-void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, const std::map<uint64_t, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj)
+void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::map<uint64_t, unsigned int>& mm_sj_counts, const std::vector<SJRow>& rr_all_sj, std::vector<std::string>& chromosome_sequence)
 {
 
-
-    StitchedER er1 = StitchedER(expressed_regions[0], 0); // define the first StitchedER, currently consisting of 1 ER
-    stitched_ERs.push_back(er1);
-    auto current_sj = mm_sj_counts.begin(); // iterator over the vector of sj_id
-    std::cout << stitched_ERs.front() << std::endl;
-    int max_stitched_ers = 0;
-    // iterate over expressed regions
-    for (unsigned int i = 0; i < expressed_regions.size(); ++i)
+    for (auto& chrom : chromosome_sequence)
     {
-        // TODO what about the last SJ, make sure to use it too
-        //only compare if we aren't at the last SJ yet
-        if (current_sj != mm_sj_counts.end()){
+        StitchedER er1 = StitchedER(expressed_regions[chrom][0], 0); // define the first StitchedER, currently consisting of 1 ER
+        stitched_ERs.push_back(er1);
+        auto current_sj = mm_sj_counts.begin(); // iterator over the vector of sj_id
+        std::cout << stitched_ERs.front() << std::endl;
+        int max_stitched_ers = 0;
+        // iterate over expressed regions
+        for (unsigned int i = 0; i < expressed_regions.size(); ++i)
+        {
+            // TODO what about the last SJ, make sure to use it too
+            //only compare if we aren't at the last SJ yet
+            if (current_sj != mm_sj_counts.end()){
 
-            const auto& expressed_region = expressed_regions[i];
-            StitchedER& most_recent_er = stitched_ERs.back(); // this is one expressed region right now
+                const auto& expressed_region = expressed_regions[chrom][i];
+                StitchedER& most_recent_er = stitched_ERs.back(); // this is one expressed region right now
 
 
-            while (current_sj != mm_sj_counts.end() && sj_too_far_back(most_recent_er.end, rr_all_sj[current_sj->first].start))
-            {
-                ++current_sj;
-            }
-            // get rr_all_sj, which is a vector of SJRows
-            if (is_similar(most_recent_er, expressed_region, rr_all_sj[current_sj->first]))
-            {
-                std::cout << "upstream ER: " << "(chr) " << expressed_regions[most_recent_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[most_recent_er.er_ids.back()].start << "\t" << expressed_regions[most_recent_er.er_ids.back()].end << std::endl;
-                std::cout << "current SJ: " << "(chr) " << rr_all_sj[current_sj->first].chrom << ", (pos) " << rr_all_sj[current_sj->first].start << "\t" << rr_all_sj[current_sj->first].end << std::endl;
-                std::cout << "downstream ER: " << "(chr) " << expressed_region.chrom << ", (pos) " << expressed_region.start << "\t" << expressed_region.end << std::endl;
-                std::cout << expressed_regions[most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[current_sj->first].start << ", " << rr_all_sj[current_sj->first].end << " <--> " <<  expressed_region.start << std::endl;
-
-                //expressed_region.print();
-                // the chromosome that
-                assert(rr_all_sj[current_sj->first].chrom == expressed_region.chrom && expressed_region.chrom == expressed_regions[most_recent_er.er_ids.back()].chrom);
-                most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
-
-                std::cout << "STITCHED region: current er_id = " << i << std::endl;
-                std::cout << stitched_ERs.back() << std::endl;
-                // move to next SJ
-                ++current_sj;
-
-                // find maximum number of ERs that were stitched together
-                if (max_stitched_ers < stitched_ERs.back().er_ids.size())
+                while (current_sj != mm_sj_counts.end() && sj_too_far_back(most_recent_er.end, rr_all_sj[current_sj->first].start) && rr_all_sj[current_sj->first].chrom == chrom)
                 {
-                    max_stitched_ers = stitched_ERs.back().er_ids.size();
+                    ++current_sj;
                 }
+                // get rr_all_sj, which is a vector of SJRows
+                if (is_similar(most_recent_er, expressed_region, rr_all_sj[current_sj->first]))
+                {
+                    // const auto& most_recent_er = expressed_regions[chrom][most_recent_er.er_ids.back()].chrom;
+                    // std::cout << "upstream ER: " << "(chr) " << expressed_regions[most_recent_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[most_recent_er.er_ids.back()].start << "\t" << expressed_regions[most_recent_er.er_ids.back()].end << std::endl;
+                    // std::cout << "current SJ: " << "(chr) " << rr_all_sj[current_sj->first].chrom << ", (pos) " << rr_all_sj[current_sj->first].start << "\t" << rr_all_sj[current_sj->first].end << std::endl;
+                    // std::cout << "downstream ER: " << "(chr) " << expressed_region.chrom << ", (pos) " << expressed_region.start << "\t" << expressed_region.end << std::endl;
+                    // std::cout << expressed_regions[most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[current_sj->first].start << ", " << rr_all_sj[current_sj->first].end << " <--> " <<  expressed_region.start << std::endl;
+
+                    //expressed_region.print();
+                    // the chromosome that
+                    assert(rr_all_sj[current_sj->first].chrom == expressed_region.chrom && expressed_region.chrom == expressed_regions[chrom][most_recent_er.er_ids.back()].chrom);
+                    most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
+
+                    std::cout << "STITCHED region: current er_id = " << i << std::endl;
+                    std::cout << stitched_ERs.back() << std::endl;
+                    // move to next SJ
+                    ++current_sj;
+
+                    // find maximum number of ERs that were stitched together
+                    if (max_stitched_ers < stitched_ERs.back().er_ids.size())
+                    {
+                        max_stitched_ers = stitched_ERs.back().er_ids.size();
+                    }
+                }
+
+
+                // current ER doesn't belong to any existing ERs --> start a new ER
+                else
+                {
+                    stitched_ERs.push_back(StitchedER(expressed_region, i));
+                }
+
+
             }
-
-
-            // current ER doesn't belong to any existing ERs --> start a new ER
-            else
-            {
-                stitched_ERs.push_back(StitchedER(expressed_region, i));
-            }
-
-
         }
+        std::cout << "max_stitched_ers = " << max_stitched_ers<< std::endl;
     }
-    std::cout << "max_stitched_ers = " << max_stitched_ers<< std::endl;
-
-    }
+}
 
 
 void Integrator::write_to_gtf(const std::string& output_path)
