@@ -20,5 +20,7 @@ add_executable(mls
         cpp/StitchedER.h
         cpp/Integrator.cpp
         cpp/Integrator.h
+        #cpp/GTF.cpp
+        #cpp/GTF.h
         #cpp/test.cpp
 )

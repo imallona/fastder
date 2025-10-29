@@ -24,9 +24,9 @@ Parser::Parser(std::string _path) {
 // function to prevent reading in Y chromosome and quality check chromosomes like ERCC
 bool Parser::chr_permitted(const std::string& chr) const
 {
-    for (auto& chrom : this->permitted_chromosomes)
+    for (auto& permitted_chromosome : this->permitted_chromosomes)
     {
-        if (chr == chrom)
+        if (chr == permitted_chromosome)
         {
             return true;
         }
@@ -69,27 +69,16 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
         std::istringstream iss(line);
         BedGraphRow row = BedGraphRow();
         iss >> row.chrom >> row.start >> row.end >> row.coverage;
-        // calculate total number of reads that map to this bp interval
-        // TODO think about int -> unsigned int type safety
-        row.length = row.end - row.start;
-        // end is not inclusive, since row1.end == row2.start of the next row
-        row.total_reads = row.length * row.coverage; //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
-        library_size += row.total_reads;
-        //row.print();
-        // compute_per_base_coverage(row, per_base_coverage);
-        if (chr_permitted(row.chrom))
-        {
+        if (chr_permitted(row.chrom)){
+            // calculate total number of reads that map to this bp interval
+            row.length = row.end - row.start;
+            // end is not inclusive, since row1.end == row2.start of the next row
+            row.total_reads = row.length * row.coverage; //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
+            library_size += row.total_reads;
             bedgraph.push_back(row);
-        }
-        else
-        {
-            std::cout << "quitting on chr = " << row.chrom << std::endl;
-            break;
         }
 
     }
-
-
     return bedgraph;
 
 
@@ -114,21 +103,16 @@ void Parser::read_rr(std::string filename)
         // read in line by line
         std::istringstream iss(line);
 
-        // skip invalid lines, headers, ERCC and Y-chromosome
-        if (line.empty() || line.find("chromosome") != std::string::npos || line.find("ERCC-") != std::string::npos || line.find("chrY") != std::string::npos) {
+        // skip invalid lines and headers (which contain the string "chromosome" --> actually don't skip ERCC and Y-chromosome since we need all sj_ids to be correct
+        if (line.empty() || line.find("chromosome") != std::string::npos) {//|| line.find("ERCC-") != std::string::npos || line.find("chrY") != std::string::npos) {
             //std::cout << line << std::endl;
             continue;
         }
         SJRow row = SJRow();
         iss >> row;
-        //if (chr_permitted(row.chrom, false)){
 
+        // rr_all_sj needs to contain all sj_ids, even those of chromosomes that aren't provided in the bedgraph files --> otherwise the mapping from RR to MM file via sj_id is broken
         rr_all_sj.push_back(row);
-        //}
-
-
-        //std::cout << row << std::endl;
-
 
     }
 
@@ -173,7 +157,7 @@ void Parser::read_mm(std::string filename) {
             unsigned int mm_id, count;
 
             if (!(iss >> sj_id >> mm_id >> count)){
-                //std::cout << "malformed line in MM file: " << line << std::endl;
+                std::cout << "malformed line in MM file: " << line << std::endl;
                 continue;
             }
 
@@ -197,7 +181,7 @@ void Parser::read_mm(std::string filename) {
                 //std::cout << it->first << " : " << it->second << std::endl;
                 //<rail_id, mm_id> mapping
                 //std::cout << rr_all_sj[sj_id] << std::endl;
-                assert(rr_all_sj[sj_id].chrom == "chr1" || rr_all_sj[sj_id].chrom == "chr2");
+                //assert(rr_all_sj[sj_id].chrom == "chr1" || rr_all_sj[sj_id].chrom == "chr2");
                 //std::cout << rr_all_sj[sj_id] << std::endl;
                 mm_sj_counts[sj_id] += count; // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
                 //sj_id_prev = sj_id;
@@ -220,6 +204,7 @@ void Parser::read_url_csv(std::string filename)
     }
 
     std::string line;
+    bool first_line = true; // in case the header is parsed differently
     // iterate over lines
     while (std::getline(file, line))
     {
@@ -227,8 +212,9 @@ void Parser::read_url_csv(std::string filename)
         std::istringstream iss(line);
 
         // invalid or header line
-        if (line.empty() || line == "rail_id,external_id,study,BigWigURL")
+        if (line.empty() || line == "rail_id,external_id,study,BigWigURL" || first_line)
         {
+            first_line = false;
             continue;
         }
         //int rail_id;
@@ -249,26 +235,32 @@ void Parser::read_url_csv(std::string filename)
 
 }
 
-// creates a map of rail_id to mm id in rail_id_to_mm_id
-// bedgraph_files contains the file name
+// creates a map of rail_id to mm_id in rail_id_to_mm_id
+// bedgraph_files contains the file names of all samples
 void Parser::fill_up(std::vector<std::string> bedgraph_files)
 {
     //fill up rail_id_to_mm_id
     for (auto& bedgraph_file : bedgraph_files)
     {
-        // add the sample and its mm index (= the rank of the rail id across the study) to rail_id_to_mm
+        // add the sample and its mm_id (= the rank of the rail id across the study, so all files in total) to rail_id_to_mm
         // [&] references all necessary variables i.e. the required context, here it's filename
         auto it = std::find_if(rail_id_to_ext_id.begin(), rail_id_to_ext_id.end(), [&](const auto& sample)
         {
+            // search for the external_id in rail_id_to_ext_id and then obtain the rail_id
             // the external id is part of the filename for all three sources GTEX, TCGA and SRA
             return bedgraph_file.find(sample.second) != std::string::npos;
         });
+        if (it != rail_id_to_ext_id.end())
+        {
+            unsigned int mm_id = std::distance(rail_id_to_ext_id.begin(), it) + 1; // std::distance counts the steps between two iterators --> mm_id is 1 too small, so add 1
+            unsigned int rail_id = it->first;
 
-        unsigned int mm_id = std::distance(rail_id_to_ext_id.begin(), it) + 1; // std::distance counts the steps between two iterators --> mm_id is 1 too small
-        unsigned int rail_id = it->first;
-
-        rail_id_to_mm_id.push_back(std::make_pair(rail_id, mm_id));
-
+            rail_id_to_mm_id.push_back(std::make_pair(rail_id, mm_id));
+        }
+        else
+        {
+            std::cout << "ERROR: file " << bedgraph_file << "has no rail_id! " << std::endl;
+        }
     }
 }
 
@@ -284,7 +276,7 @@ void Parser::search_directory() {
     for (const auto & entry : std::filesystem::directory_iterator(path))
     {
         std::string filename = entry.path().string();
-
+        // create rail_id_to_ext_id
         if (filename.find("BigWig_list") != std::string::npos && filename.find(".csv") != std::string::npos) //TODO I checked some filenames of the URL csv files manually and they all contain the substring BigWig_list, so I hope that this is a general rule
         {
             std::cout << "BigWig URL list" << std::endl;
@@ -320,7 +312,7 @@ void Parser::search_directory() {
 
     std::cout << "total nr of samples in this study:  " << rail_id_to_ext_id.size() << std::endl;
 
-    // fill up rail_id_to_mm_id mapping for all rail_ids in the dataset
+    // fill up rail_id_to_mm_id mapping for all rail_ids provided by the user
     fill_up(bedgraph_files);
     std::cout << "nr of samples provided by user: " << rail_id_to_mm_id.size() << std::endl;
 
@@ -343,16 +335,16 @@ void Parser::search_directory() {
         else if (filename.find(".bedGraph") != std::string::npos) {
             std::cout << "Bedgraph file"<< std::endl;
             //
-            uint64_t library_size = 0; // ensure that the number is large enough
+            uint64_t library_size = 0; // ensure that the integer type is large enough
             std::vector<BedGraphRow> sample_bedgraph = read_bedgraph(filename, library_size);
             std::unordered_map<std::string, std::vector<double>> per_base_coverage;
-            //normalize to CPM and expand rows to per base coverage (also normalized)
 
+
+            //normalize to CPM and expand rows to per base coverage (also normalized)
             for (BedGraphRow& row : sample_bedgraph)
             {
                 row.normalize(library_size);
                 compute_per_base_coverage(row, per_base_coverage);
-                //TODO here compute_per_base_coverage(row)
             }
 
             // add to matrix of all bedgraphs per sample
@@ -360,24 +352,14 @@ void Parser::search_directory() {
             all_per_base_coverages.push_back(per_base_coverage);
 
         }
-        // list with the mapping of external_id to rail_id
-        else if (filename.find("BigWig_list") != std::string::npos && filename.find(".csv") != std::string::npos)
-        {
-            continue;
-        }
+
         else {
             std::cout << "UNKNOWN FILE CATEGORY " << filename  << std::endl;
         }
 
-        //int library_size = read_file(entry.path().string(), per_base_coverage, bedgraph);
-
-        // create per base coverage across all samples (sample-agnostic)
-
-        //get_per_base_coverages();
-
     }
 
-    std::cout << "nr of splice junctions across all samples in user input: " << mm_sj_counts.size() << std::endl;
+    std::cout << "nr of splice junctions in permitted chromosomes across all samples in user input: " << mm_sj_counts.size() << std::endl;
     // for (auto& it : mm_sj_counts)
     // {
     //     std::cout << it.first << " : " << it.second << std::endl;

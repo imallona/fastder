@@ -25,25 +25,21 @@ public:
     std::vector<BedGraphRow> read_bedgraph(const std::string& filename, uint64_t& library_size);
     void read_mm(std::string filename);
     void read_rr(std::string filename);
-    void normalize(const unsigned int& library_size);
     void read_url_csv(std::string filename);
     void fill_up(std::vector<std::string> bedgraph_files);
     [[nodiscard]] bool chr_permitted(const std::string& chr) const;
 
     static void compute_per_base_coverage(const BedGraphRow& row, std::unordered_map<std::string, std::vector<double>>& per_base_coverage);
-    //void get_per_base_coverages();
+
     // TODO add function get_rail_id_from_filename(filename)?
 
     std::string path;
     std::vector<std::vector<BedGraphRow>> all_bedgraphs; //TODO maybe change to unordered map with key = sample id, value = bedgraph of the sample?
-    std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages;
+    std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages; //NOT ordered by chromosomes
     // store RR info for each splice junctions
     std::vector<SJRow> rr_all_sj;
 
-    // store Market Matrix (MM) file for one sample
-    // std::unordered_map<unsigned int, std::vector<std::pair<unsigned int, unsigned int>>> mm_by_samples;
-
-    //TODO use uint64_t instead for the sj_id
+    // store relevant Market Matrix (MM)
     std::map<uint64_t, unsigned int> mm_sj_counts; // <sj_id, count> ordered by sj_id, map of sj occurring in samples part of the user input
 
     std::vector<std::pair<unsigned int, std::string>> rail_id_to_ext_id; // <rail_id, external_id> for all samples in the dataset
@@ -52,8 +48,8 @@ public:
 
 
     const std::vector<std::string> permitted_chromosomes =  {
-        "chr1",
-        "chr2",
+        //"chr1",
+         "chr2",
         // "chr3",
         // "chr4",
         // "chr5",

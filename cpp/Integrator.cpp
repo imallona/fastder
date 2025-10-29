@@ -2,6 +2,7 @@
 // Created by martinalavanya on 20.10.25.
 //
 
+#include <cassert>
 #include <Integrator.h>
 // constructor
 Integrator::Integrator()
@@ -11,17 +12,17 @@ Integrator::Integrator()
 
 
 
-// function that calculates relative match with a tolerance of +/- 5%
+// function that calculates relative match with a tolerance of +/- n%
 bool Integrator::within_threshold(double val1, double val2){
-    double tolerance_bottom = val1 * (1 - tolerance);
-    double tolerance_top = val1 * (1 + tolerance);
+    double tolerance_bottom = val1 * (1 - coverage_tolerance);
+    double tolerance_top = val1 * (1 + coverage_tolerance);
     return val2 >= tolerance_bottom && val2 <= tolerance_top;
 }
 
-bool Integrator::within_threshold(uint64_t val1, uint64_t val2){
-    double tolerance_bottom = val1 * (1 - tolerance);
-    double tolerance_top = val1 * (1 + tolerance);
-    return val2 >= tolerance_bottom && val2 <= tolerance_top;
+bool Integrator::within_threshold(uint64_t pos_1, uint64_t pos_2){
+    //example: pos_1 = 15 (end position of exon), pos_2 = 18 (start position of SJ)
+    // 15 >= 18 - 10 and 15 <= 18 + 10
+    return pos_1 >= pos_2 - position_tolerance && pos_1 <= pos_2 + position_tolerance;
 }
 
 // function that calculates relative match with a tolerance of +/- 5%
@@ -43,13 +44,14 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
 {
 
     StitchedER er1 = StitchedER(expressed_regions[0], 0); // define the first StitchedER, currently consisting of 1 ER
-    stitched_ERs.push_back(er1); //TODO MAYBE NOT YET, ONLY APPEND WHEN IT'S FINISHED
-    auto current_sj = mm_sj_counts.begin(); //iterator over the vector of SJ ids
+    stitched_ERs.push_back(er1);
+    auto current_sj = mm_sj_counts.begin(); // iterator over the vector of sj_id
     std::cout << stitched_ERs.front() << std::endl;
     int max_stitched_ers = 0;
     // iterate over expressed regions
     for (unsigned int i = 0; i < expressed_regions.size(); ++i)
     {
+        // TODO what about the last SJ, make sure to use it too
         //only compare if we aren't at the last SJ yet
         if (current_sj != mm_sj_counts.end()){
 
@@ -64,8 +66,16 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
             // get rr_all_sj, which is a vector of SJRows
             if (is_similar(most_recent_er, expressed_region, rr_all_sj[current_sj->first]))
             {
+                std::cout << "upstream ER: " << "(chr) " << expressed_regions[most_recent_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[most_recent_er.er_ids.back()].start << "\t" << expressed_regions[most_recent_er.er_ids.back()].end << std::endl;
+                std::cout << "current SJ: " << "(chr) " << rr_all_sj[current_sj->first].chrom << ", (pos) " << rr_all_sj[current_sj->first].start << "\t" << rr_all_sj[current_sj->first].end << std::endl;
+                std::cout << "downstream ER: " << "(chr) " << expressed_region.chrom << ", (pos) " << expressed_region.start << "\t" << expressed_region.end << std::endl;
+                std::cout << expressed_regions[most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[current_sj->first].start << ", " << rr_all_sj[current_sj->first].end << " <--> " <<  expressed_region.start << std::endl;
+
                 //expressed_region.print();
                 most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
+                assert(rr_all_sj[current_sj->first].chrom == expressed_region.chrom && expressed_region.chrom == expressed_regions[most_recent_er.er_ids.back()].chrom);
+
+
                 std::cout << "STITCHED region: current er_id = " << i << std::endl;
                 std::cout << stitched_ERs.back() << std::endl;
                 // move to next SJ
@@ -88,6 +98,6 @@ void Integrator::stitch_up(const std::vector<BedGraphRow>& expressed_regions, co
 
         }
     }
-    std::cout << "max_stitched_ers =" << max_stitched_ers<< std::endl;
+    std::cout << "max_stitched_ers = " << max_stitched_ers<< std::endl;
 
     }

@@ -27,7 +27,8 @@ class Integrator
 
     // MEMBERS
     std::vector<StitchedER> stitched_ERs;
-    double tolerance = 0.1;
+    double coverage_tolerance = 0.1;
+    int position_tolerance = 10;
 
 
 };

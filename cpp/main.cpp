@@ -12,7 +12,7 @@
 int main() {
 
     // parse files
-    std::string directory = "../data/chr17_19";
+    std::string directory = "../data/all_chr";
     std::cout << "Enter directory name: ";
     //std::cin >> directory;
 
@@ -21,19 +21,15 @@ int main() {
     Parser parser(directory);
     parser.search_directory();
 
-
-    Averager averager;
-    // get per-base coverage
-    //averager.get_all_per_base_coverage(parser.all_bedgraphs);
-
     // get mean coverage vector
+    Averager averager;
     averager.compute_mean_coverage(parser.all_per_base_coverages);
 
     // get expressed regions
     averager.find_ERs(0.25, 5);
     //std::cout << averager.expressed_regions.size() << std::endl;
     std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
-    std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "total_reads" <<  "\t" << "length" << std::endl;
+    std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;
 
     for (int i = 0; i  < 20; ++i)
     {
@@ -54,7 +50,9 @@ int main() {
     std::cout << "stitched ER index" << "\t" << "(" <<  "length" <<"," << "average coverage" << ")" << std::endl;
     std::cout << "stitched_er.across_er_coverage" << "\t" << "stitched_er.start" << "\t" << "stitched_er.end" << "\t" << "stitched_er.total_length" << std::endl;
 
+    std::cout << averager.expressed_regions.size() <<" expressed regions" << std::endl;
     std::cout << "number of stitched regions = "  << integrator.stitched_ERs.size() << std::endl;
+    std::cout << "nr of sj in provided data + permitted chromosomes = " << parser.mm_sj_counts.size() << std::endl;
     // for (auto & stitched_er : integrator.stitched_ERs)
     // {
     //     std::cout << stitched_er << std::endl;
