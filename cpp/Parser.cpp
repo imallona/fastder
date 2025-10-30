@@ -183,7 +183,7 @@ void Parser::read_mm(std::string filename) {
             // OLD: mm_by_samples[sample_id].push_back(std::make_pair(sj_id, count));
             // NEW: cumulative counts of a sj_id across all samples in the input
 
-            // find the rail_id based on the mm_id --> only add counts if the mm_id is part of the samples
+            // find the rail_id based on the mm_id --> only add sj_id if the mm_id is part of the samples
             auto it = std::find_if(rail_id_to_mm_id.begin(), rail_id_to_mm_id.end(), [&] (const auto& p)
             {
                 return p.second == mm_id;
@@ -194,9 +194,8 @@ void Parser::read_mm(std::string filename) {
 
             if (it != rail_id_to_mm_id.end() && this->chr_permitted(rr_all_sj[sj_id].chrom)) // rail_id_to_mm_id has <rail_id, mm_id> mapping
             {
-
-
-                mm_sj_counts[sj_id] += count; // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
+                // store vector of sj_ids for each chromosome
+                mm_chrom_sj[rr_all_sj[sj_id].chrom].push_back(sj_id); // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
 
             }
         }
@@ -339,8 +338,8 @@ void Parser::search_directory() {
         if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
             std::cout << "MM file"<< std::endl;
             // TODO change!
-            //read_mm(filename);
-            read_mm_cached_always(filename);
+            read_mm(filename);
+            //read_mm_cached_always(filename);
 
         }
 
@@ -403,9 +402,9 @@ void Parser::save_mm_cache_(const fs::path& cache) const {
     out.write((char*)&magic, sizeof(magic));
     out.write((char*)&version, sizeof(version));
 
-    uint64_t n = mm_sj_counts.size();
+    uint64_t n = mm_chrom_sj.size();
     out.write((char*)&n, sizeof(n));
-    for (const auto& [sj_id, count] : mm_sj_counts) {
+    for (const auto& [sj_id, count] : mm_chrom_sj) {
         out.write((char*)&sj_id,  sizeof(sj_id));   // unsigned int
         out.write((char*)&count,  sizeof(count));   // unsigned int
     }
@@ -422,13 +421,13 @@ bool Parser::load_mm_cache_(const fs::path& cache) {
 
     uint64_t n=0;
     in.read((char*)&n, sizeof(n));
-    mm_sj_counts.clear();
+    mm_chrom_sj.clear();
     //mm_sj_counts.reserve(n);
     for (uint64_t i=0; i<n; ++i) {
         unsigned int key, val;
         in.read((char*)&key, sizeof(key));
         in.read((char*)&val, sizeof(val));
-        mm_sj_counts[key] = val;
+        mm_chrom_sj[key] = val;
     }
     return true;
 }

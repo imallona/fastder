@@ -40,7 +40,7 @@ public:
     std::vector<SJRow> rr_all_sj;
 
     // store relevant Market Matrix (MM)
-    std::map<uint64_t, unsigned int> mm_sj_counts; // <sj_id, count> ordered by sj_id, map of sj occurring in samples part of the user input
+    std::map<std::string, std::vector<uint64_t>> mm_chrom_sj; // <chrom, sj_id> ordered by sj_id, map of sj occurring in samples part of the user input
 
     std::vector<std::pair<unsigned int, std::string>> rail_id_to_ext_id; // <rail_id, external_id> for all samples in the dataset
 
