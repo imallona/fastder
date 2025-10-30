@@ -46,13 +46,13 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
 
     for (auto& chrom : chromosome_sequence)
     {
-        StitchedER er1 = StitchedER(expressed_regions[chrom][0], 0); // define the first StitchedER, currently consisting of 1 ER
+        StitchedER er1 = StitchedER(expressed_regions.at(chrom).at(0), 0); // define the first StitchedER, currently consisting of 1 ER
         stitched_ERs.push_back(er1);
         auto current_sj = mm_sj_counts.begin(); // iterator over the vector of sj_id
         std::cout << stitched_ERs.front() << std::endl;
         int max_stitched_ers = 0;
         // iterate over expressed regions
-        for (unsigned int i = 0; i < expressed_regions.size(); ++i)
+        for (unsigned int i = 0; i < expressed_regions.at(chrom).size(); ++i)
         {
             // TODO what about the last SJ, make sure to use it too
             //only compare if we aren't at the last SJ yet
@@ -91,7 +91,6 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                         max_stitched_ers = stitched_ERs.back().er_ids.size();
                     }
                 }
-
 
                 // current ER doesn't belong to any existing ERs --> start a new ER
                 else

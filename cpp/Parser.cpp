@@ -135,8 +135,6 @@ void Parser::read_mm(std::string filename) {
 
         std::cout << filename << std::endl;
         //read in file from path
-        // TODO remove:
-        filename = "../data/gtex.junctions.BRAIN.ALL.MM";
         std::ifstream file(filename);
         // max index is 2931 (= nr of samples)
         // min index is 0
@@ -340,8 +338,9 @@ void Parser::search_directory() {
         // don't read in cached MM files as regular MM files!
         if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
             std::cout << "MM file"<< std::endl;
-            read_mm(filename);
-            //read_mm_cached_always(filename);
+            // TODO change!
+            //read_mm(filename);
+            read_mm_cached_always(filename);
 
         }
 
@@ -365,21 +364,15 @@ void Parser::search_directory() {
             all_per_base_coverages.push_back(per_base_coverage);
 
         }
-
+        else if ((filename.find("BigWig_list") != std::string::npos && filename.find(".csv") != std::string::npos) || (filename.find("ALL.RR") != std::string::npos)){
+            continue;
+        }
         else {
             std::cout << "UNKNOWN FILE CATEGORY " << filename  << std::endl;
         }
 
     }
 
-
-    // for (auto& it : mm_sj_counts)
-    // {
-    //     std::cout << it.first << " : " << it.second << std::endl;
-    // }
-    std::cout << "MM file"<< std::endl;
-    read_mm("Hi");
-    std::cout << "nr of splice junctions in permitted chromosomes across all samples in user input: " << mm_sj_counts.size() << std::endl;
     std::cout << "FINISHED PARSING" << std::endl;
 
 }

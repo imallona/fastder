@@ -55,6 +55,7 @@ void Averager::compute_mean_coverage(std::vector<std::unordered_map<std::string,
     {
         std::string chrom = chromosome_sequence[k];
         mean_coverage[chrom] = workers[k].get(); //get result
+        std::cout << "FINISHED MEAN COMPUTATION FOR " << chrom << " with #bp = " << all_per_base_coverages[0].at(chrom).size() << std::endl;
         assert(all_per_base_coverages[0].at(chrom).size() == mean_coverage[chrom].size());
     }
 
@@ -62,47 +63,65 @@ void Averager::compute_mean_coverage(std::vector<std::unordered_map<std::string,
 
 
 // identify ERs with coverage > threshold and length > min_length bp
-void Averager::find_ERs(double threshold, int min_length, const std::vector<std::string>& chromosome_sequence)
+void Averager::find_ERs(double threshold, int min_length, std::vector<std::string>& chromosome_sequence)
 {
-
-    int start = 0;
-    double current_avg = 0;
-    int count = 0;
+    // define workers --> use one thread per chromosome
+    std::vector<std::future<std::vector<BedGraphRow>>> workers;
+    workers.reserve(chromosome_sequence.size()); //pre-allocate space for workers
 
     //if length > 5 and coverage at bp < 5 -> ER has ended, append
     // if coverage at bp > 5 --> add to current ER
     // if coverage < 5 && length < 5: don't count as ER, reset start and average
     //pair.first = chromosome, pair.second = vector of per base coverages of that chromosome
-    for (auto& chrom : chromosome_sequence)
+    for (auto chrom : chromosome_sequence)
     {
-        for (unsigned int i = 0; i < mean_coverage[chrom].size(); i++)
+        workers.push_back(std::async(std::launch::async, [&, chrom]
         {
-            double coverage =  mean_coverage[chrom][i];
-            // coverage is less than threshold
-            if ( mean_coverage[chrom][i] <= threshold)
+            int start = 0;
+            double current_avg = 0;
+            int count = 0;
+            std::vector<BedGraphRow> chrom_expressed_regions;
+            for (unsigned int i = 0; i < mean_coverage[chrom].size(); i++)
             {
-                // region at least 5 bp long, append to results
-                if ((i - start) > min_length)
+                double coverage =  mean_coverage[chrom][i];
+                // coverage is less than threshold
+                if ( mean_coverage[chrom][i] <= threshold)
                 {
-                    current_avg /= (i - 1 - start);
-                    BedGraphRow expressed_region = BedGraphRow(chrom, start, i - 1, current_avg);
+                    // region at least 5 bp long, append to results
+                    if ((i - start) > min_length)
+                    {
+                        current_avg /= (i - 1 - start);
+                        BedGraphRow expressed_region = BedGraphRow(chrom, start, i - 1, current_avg);
 
-                    //expressed_region.print();
-                    expressed_regions[chrom].push_back(expressed_region);
+                        //expressed_region.print();
+                        chrom_expressed_regions.push_back(expressed_region);
+
+                    }
+                    //region too short to be appended, reset start and current avg
+                    start = i + 1;
+                    current_avg = 0;
 
                 }
-                //region too short to be appended, reset start and current avg
-                start = i + 1;
-                current_avg = 0;
+                // add to current ER
+                else if (coverage > threshold)
+                {
+                    current_avg += coverage;
+                    ++count;
+                }
 
-            }
-            // add to current ER
-            else if (coverage > threshold)
-            {
-                current_avg += coverage;
-                ++count;
-            }
+            } // end inner for loop
+                return chrom_expressed_regions;
+            }));
         }
-    }
-    //std::cout << count << " positions" << std::endl;
+
+        //avoid using mutexes, just do single-threaded merge
+        // TODO later use >1 thread per chromosome
+        for (int k = 0; k < workers.size(); k++)
+        {
+            std::string chrom = chromosome_sequence[k];
+            expressed_regions[chrom] = workers[k].get(); //get result
+            //std::cout << "FINISHED MEAN COMPUTATION FOR " << chrom << " with #bp = " << all_per_base_coverages[0].at(chrom).size() << std::endl;
+            //assert(all_per_base_coverages[0].at(chrom).size() == mean_coverage[chrom].size());
+        }
+
 }
