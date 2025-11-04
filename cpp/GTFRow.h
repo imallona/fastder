@@ -11,7 +11,8 @@ class GTFRow
 {
 
     public:
-    GTFRow(const StitchedER& region);
+    GTFRow(const StitchedER& region, std::string ftr, unsigned int id);
+    void change_feature(std::string ftr, unsigned int id, unsigned int exon_nr);
 
     // MEMBER VARIABLES
     std::string seqname; //name of the chromosome without the "chr" prefix

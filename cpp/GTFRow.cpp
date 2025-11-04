@@ -8,29 +8,51 @@
 #include <regex>
 
 
-GTFRow::GTFRow(const StitchedER& region)
+GTFRow::GTFRow(const StitchedER& region, std::string ftr, unsigned int id)
 {
-    // stitchedER has only one exon
-    if (region.er_ids.size() == 1)
-    {
-        feature = "exon";
-    }
-    else if (region.er_ids.size() > 1)
-    {
-        feature = "gene";
-    }
-    else
-    {
-        feature = "UNKNOWN";
-        std::cout << "ERROR: Stitched ER contains " << region.er_ids.size() << " exons!";
-    }
+
     seqname = std::regex_replace(region.chrom, std::regex("^chr"), ""); //strip away chr from chr1, chrX etc.
+    feature = ftr;
     score = region.across_er_coverage;
     start = region.start;
     end = region.end;
-    attribute = "nof_expressed_regions="; //hid=trf; hstart=1; hend=21
-    attribute += std::to_string(region.er_ids.size());
-    attribute += "; length=";
-    attribute += std::to_string(region.total_length);
+    // update column 9 based on feature
+    change_feature(ftr, id, 0);
+
+
+}
+
+void GTFRow::change_feature(std::string ftr, unsigned int id, unsigned int exon_nr)
+{
+    // always include gene id
+    attribute = "gene_id \"gene";
+    attribute += std::to_string(id);
+
+    if (ftr == "gene")
+    {
+        attribute += "\"; gene_name \"faster_gene";
+        attribute += std::to_string(id);
+    }
+    else if (ftr == "transcript" || ftr == "exon")
+    {
+        attribute += "\"; transcript_id \"tx1";
+        attribute += std::to_string(id);
+    }
+
+    else if (ftr == "exon" && exon_nr > 0)
+    {
+        attribute += "\"; exon_number \"";
+        attribute += std::to_string(exon_nr);
+    }
+
+    else
+    {
+        std::cout << "ERROR: UNKNOWN FEATURE";
+    }
+    attribute += "\";";
+    // attribute += "\"; nof_expressed_regions="; //hid=trf; hstart=1; hend=21
+    // attribute += std::to_string(region.er_ids.size());
+    // attribute += "; length=";
+    // attribute += std::to_string(region.total_length);
 
 }

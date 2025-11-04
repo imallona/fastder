@@ -2,6 +2,7 @@
 // Created by martinalavanya on 08/10/2025.
 //
 
+#include <cassert>
 #include <iostream>
 
 #include "BedGraphRow.h"
@@ -37,33 +38,31 @@ int main() {
         averager.expressed_regions.at(parser.chromosome_sequence.at(0)).at(i).print();
     }
     std::cout << "*****************************" << std::endl;
-    std::cout << " nr of sj = " << parser.mm_chrom_sj.size() << std::endl;
+    std::cout << " nr of chromosomes: " << parser.mm_chrom_sj.size() << std::endl;
+    for (auto& chrom : parser.mm_chrom_sj)
+    {
+        std::cout << " chrom " << chrom.first << " : " << chrom.second.size() << std::endl;
+    }
     auto it = parser.mm_chrom_sj.begin();
     for (int i = 0; i  < 20; ++i)
     {
-        std::cout << parser.rr_all_sj[it->first] << std::endl;
-        ++it;
+        assert(it->second.size() >= 20);
+        std::cout << parser.rr_all_sj[it->second.at(i)] << std::endl;
+
     }
     // use splice junctions to stitch together expressed regions
     Integrator integrator = Integrator();
-    integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj, parser.chromosome_sequence);
+    integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
 
     std::cout << "stitched ER index" << "\t" << "(" <<  "length" <<"," << "average coverage" << ")" << std::endl;
     std::cout << "stitched_er.across_er_coverage" << "\t" << "stitched_er.start" << "\t" << "stitched_er.end" << "\t" << "stitched_er.total_length" << std::endl;
 
     std::cout << "number of stitched regions = "  << integrator.stitched_ERs.size() << std::endl;
-    std::cout << "nr of sj in provided data + permitted chromosomes = " << parser.mm_chrom_sj.size() << std::endl;
 
     // SUMMARY OF SPLICE JUNCTIONS
-    std::unordered_map<std::string, int> sj_counts;
-    for (auto& sj : parser.mm_chrom_sj)
+    for (auto& c : parser.mm_chrom_sj)
     {
-        sj_counts[parser.rr_all_sj[sj.first].chrom]++;
-    }
-
-    for (auto& c : sj_counts)
-    {
-        std::cout << "splice junctions in chr " << c.first << " = " << c.second << std::endl;
+        std::cout << "splice junctions in chr " << c.first << " = " << c.second.size() << std::endl;
     }
 
     // SUMMARY OF EXPRESSED REGIONS

@@ -375,8 +375,6 @@ void Parser::search_directory() {
     std::cout << "FINISHED PARSING" << std::endl;
 
 }
-
-
 // CACHING MM FILE
 
 namespace fs = std::filesystem;
@@ -391,7 +389,7 @@ static fs::path mm_cache_path(const fs::path& src) {
     return cache;
 }
 
-//serialize parsed result (mm_sj_counts)
+//serialize parsed result (mm_chrom_sj)
 void Parser::save_mm_cache_(const fs::path& cache) const {
     std::ofstream out(cache, std::ios::binary);
     if (!out) throw std::runtime_error("Cannot open cache for write: " + cache.string());
@@ -404,9 +402,18 @@ void Parser::save_mm_cache_(const fs::path& cache) const {
 
     uint64_t n = mm_chrom_sj.size();
     out.write((char*)&n, sizeof(n));
-    for (const auto& [sj_id, count] : mm_chrom_sj) {
-        out.write((char*)&sj_id,  sizeof(sj_id));   // unsigned int
-        out.write((char*)&count,  sizeof(count));   // unsigned int
+    for (const auto& [chrom, sjs] : mm_chrom_sj) {
+        // write key string
+        const uint64_t klen = (uint64_t)chrom.size();
+        out.write((char*)&klen, sizeof(klen));
+        out.write(chrom.data(), (std::streamsize)klen);
+
+        // write value vector<uint64_t>
+        const uint64_t vlen = (uint64_t)sjs.size();
+        out.write((char*)&vlen, sizeof(vlen));
+        if (vlen) {
+            out.write((const char*)sjs.data(), (std::streamsize)(vlen * sizeof(uint64_t)));
+        }
     }
 }
 
@@ -422,12 +429,25 @@ bool Parser::load_mm_cache_(const fs::path& cache) {
     uint64_t n=0;
     in.read((char*)&n, sizeof(n));
     mm_chrom_sj.clear();
-    //mm_sj_counts.reserve(n);
+
     for (uint64_t i=0; i<n; ++i) {
-        unsigned int key, val;
-        in.read((char*)&key, sizeof(key));
-        in.read((char*)&val, sizeof(val));
-        mm_chrom_sj[key] = val;
+        // read key string
+        uint64_t klen=0;
+        in.read((char*)&klen, sizeof(klen));
+        std::string chrom;
+        chrom.resize((size_t)klen);
+        if (klen) in.read(chrom.data(), (std::streamsize)klen);
+
+        // read value vector<uint64_t>
+        uint64_t vlen=0;
+        in.read((char*)&vlen, sizeof(vlen));
+        std::vector<uint64_t> sjs;
+        sjs.resize((size_t)vlen);
+        if (vlen) {
+            in.read((char*)sjs.data(), (std::streamsize)(vlen * sizeof(uint64_t)));
+        }
+
+        mm_chrom_sj.emplace(std::move(chrom), std::move(sjs));
     }
     return true;
 }
@@ -445,7 +465,7 @@ void Parser::read_mm_cached_always(const std::string& filename) {
 
     // First run (no cache) or cache unreadable: parse once, then save
     std::cout << "Parsing MM and creating cache…" << std::endl;
-    read_mm(filename);               // fills mm_sj_counts
+    read_mm(filename);               // fills mm_chrom_sj
     save_mm_cache_(cache);
     std::cout << "Cached at: " << cache << std::endl;
 }
