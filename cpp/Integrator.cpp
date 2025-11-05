@@ -103,9 +103,9 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                 {
                     if (first_er)
                     {
-                        stitched_ERs = {StitchedER(expressed_region, i)}; // replace dummy first element with real first element
+                        stitched_ERs.back() = StitchedER(expressed_region, i); // replace dummy first element with real first element
                         first_er = false;
-                        assert(stitched_ERs.size() == 1);
+                        //assert(stitched_ERs.size() == 1);
                     }
                     else
                     {
@@ -150,15 +150,15 @@ void Integrator::write_to_gtf(const std::string& output_path)
 
         gtf_row.change_feature("transcript", i + 1, 0);
         out << gtf_row << std::endl;
-        std::cout << "gtf coords: " << gtf_row.start << " " << gtf_row.end << std::endl;
-        std::cout << "stitched er coords: " << stitched_ERs[i].start << " " << stitched_ERs[i].end << std::endl;
+        // std::cout << "gtf coords: " << gtf_row.start << " " << gtf_row.end << std::endl;
+        // std::cout << "stitched er coords: " << stitched_ERs[i].start << " " << stitched_ERs[i].end << std::endl;
 
         // add the ERs within the stitched_er
         for (unsigned int k = 0; k < stitched_ERs[i].er_ids.size(); ++k)
         {
 
             gtf_row.change_feature("exon", i + 1, k + 1);
-            std::cout  << "start= " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
+           // std::cout  << "start= " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
             gtf_row.end = gtf_row.start + stitched_ERs.at(i).all_coverages.at(k).first; // start + length = end
 
             out << gtf_row << std::endl;
