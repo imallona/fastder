@@ -24,6 +24,7 @@ GTFRow::GTFRow(const StitchedER& region, std::string ftr, unsigned int id)
 
 void GTFRow::change_feature(std::string ftr, unsigned int id, unsigned int exon_nr)
 {
+    feature = ftr;
     // always include gene id
     attribute = "gene_id \"gene";
     attribute += std::to_string(id);
@@ -35,20 +36,22 @@ void GTFRow::change_feature(std::string ftr, unsigned int id, unsigned int exon_
     }
     else if (ftr == "transcript" || ftr == "exon")
     {
-        attribute += "\"; transcript_id \"tx1";
+        attribute += "\"; transcript_id \"tx";
         attribute += std::to_string(id);
     }
+    else
+    {
+        std::cout << "ERROR: UNKNOWN FEATURE";
+    }
 
-    else if (ftr == "exon" && exon_nr > 0)
+    // add exon number only if it's an exon
+    if (ftr == "exon" && exon_nr > 0)
     {
         attribute += "\"; exon_number \"";
         attribute += std::to_string(exon_nr);
     }
 
-    else
-    {
-        std::cout << "ERROR: UNKNOWN FEATURE";
-    }
+
     attribute += "\";";
     // attribute += "\"; nof_expressed_regions="; //hid=trf; hstart=1; hend=21
     // attribute += std::to_string(region.er_ids.size());

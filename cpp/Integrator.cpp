@@ -49,6 +49,7 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
         std::string chrom = sjs.first;
         StitchedER er1 = StitchedER(expressed_regions.at(chrom).at(0), 0); // define the first StitchedER, currently consisting of 1 ER
         stitched_ERs.push_back(er1);
+        bool first_er = true;
         auto current_sj = sjs.second.begin(); // iterator over the vector of sj_id
         std::cout << stitched_ERs.front() << std::endl;
         int max_stitched_ers = 0;
@@ -63,26 +64,30 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                 StitchedER& most_recent_er = stitched_ERs.back(); // this is one expressed region right now
 
                 // skip to SJ with coordinates that line up with the most recent ER
-                while (current_sj != sjs.second.end() && sj_too_far_back(most_recent_er.end, rr_all_sj[*current_sj].start) && rr_all_sj[*current_sj].chrom == chrom)
+                std::cout << "upstream ER: " << expressed_regions[chrom][most_recent_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[chrom][most_recent_er.er_ids.back()].start << "\t" << expressed_regions[chrom][most_recent_er.er_ids.back()].end << ", (len) " << expressed_regions[chrom][most_recent_er.er_ids.back()].end -  expressed_regions[chrom][most_recent_er.er_ids.back()].start <<std::endl;
+                std::cout << "downstream ER: " << expressed_region.chrom << ", (pos) " << expressed_region.start << "\t" << expressed_region.end << ", (len) " <<  expressed_region.end  - expressed_region.start << std::endl;
+                while (current_sj != sjs.second.end() && within_threshold(most_recent_er.end, rr_all_sj[*current_sj].start) && rr_all_sj[*current_sj].chrom == chrom)
                 {
+                    std::cout << "current SJ = " << rr_all_sj[*current_sj].start << " <--> " <<  rr_all_sj[*current_sj].end << std::endl;
                     ++current_sj;
                 }
+                std::cout << "current SJ = " << rr_all_sj[*current_sj].start << " <--> " <<  rr_all_sj[*current_sj].end << std::endl;
                 // get rr_all_sj, which is a vector of SJRows
                 if (is_similar(most_recent_er, expressed_region, rr_all_sj[*current_sj]))
                 {
-                    // const auto& most_recent_er = expressed_regions[chrom][most_recent_er.er_ids.back()].chrom;
-                    // std::cout << "upstream ER: " << "(chr) " << expressed_regions[most_recent_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[most_recent_er.er_ids.back()].start << "\t" << expressed_regions[most_recent_er.er_ids.back()].end << std::endl;
-                    // std::cout << "current SJ: " << "(chr) " << rr_all_sj[current_sj->first].chrom << ", (pos) " << rr_all_sj[current_sj->first].start << "\t" << rr_all_sj[current_sj->first].end << std::endl;
+                    //
+                    // std::cout << "upstream ER: " << "(chr) " << expressed_regions[chrom][most_recent_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[chrom][most_recent_er.er_ids.back()].start << "\t" << expressed_regions[chrom][most_recent_er.er_ids.back()].end << std::endl;
+                    // std::cout << "current SJ: " << "(chr) " << rr_all_sj[*current_sj].chrom  << ", (pos) " << rr_all_sj[*current_sj].start << "\t" << rr_all_sj[*current_sj].end << std::endl;
                     // std::cout << "downstream ER: " << "(chr) " << expressed_region.chrom << ", (pos) " << expressed_region.start << "\t" << expressed_region.end << std::endl;
-                    // std::cout << expressed_regions[most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[current_sj->first].start << ", " << rr_all_sj[current_sj->first].end << " <--> " <<  expressed_region.start << std::endl;
+                    std::cout << expressed_regions[chrom][most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[*current_sj].start << ", " << rr_all_sj[*current_sj].end<< " <--> " <<  expressed_region.start << std::endl;
 
                     //expressed_region.print();
                     // the chromosome that
                     assert(rr_all_sj[*current_sj].chrom == expressed_region.chrom && expressed_region.chrom == expressed_regions[chrom][most_recent_er.er_ids.back()].chrom);
                     most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
 
-                    std::cout << "STITCHED region: current er_id = " << i << std::endl;
-                    std::cout << stitched_ERs.back() << std::endl;
+                    // std::cout << "STITCHED region: current er_id = " << i << std::endl;
+                    // std::cout << stitched_ERs.back() << std::endl;
                     // move to next SJ
                     ++current_sj;
 
@@ -96,7 +101,17 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                 // current ER doesn't belong to any existing ERs --> start a new ER
                 else
                 {
-                    stitched_ERs.push_back(StitchedER(expressed_region, i));
+                    if (first_er)
+                    {
+                        stitched_ERs = {StitchedER(expressed_region, i)}; // replace dummy first element with real first element
+                        first_er = false;
+                        assert(stitched_ERs.size() == 1);
+                    }
+                    else
+                    {
+                        stitched_ERs.push_back(StitchedER(expressed_region, i));
+                    }
+
                 }
 
 
@@ -117,7 +132,7 @@ void Integrator::write_to_gtf(const std::string& output_path)
     // get today's date
     auto now = std::chrono::system_clock::now();
     std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(now)};
-    // format as YYYY-MM-DD
+    //format as YYYY-MM-DD
     std::string date = std::format("{:%Y-%m-%d}", ymd);
 
     // write headers
@@ -130,19 +145,39 @@ void Integrator::write_to_gtf(const std::string& output_path)
     for (unsigned int i = 0; i < this->stitched_ERs.size(); ++i)
     {
         // each stitched_er is both a gene and a transcript
-        GTFRow gtf_row = GTFRow(stitched_ERs[i], "gene", i);
+        GTFRow gtf_row = GTFRow(stitched_ERs[i], "gene", i + 1);
         out << gtf_row << std::endl;
 
-        gtf_row.change_feature("transcript", i, 0);
+        gtf_row.change_feature("transcript", i + 1, 0);
         out << gtf_row << std::endl;
+        std::cout << "gtf coords: " << gtf_row.start << " " << gtf_row.end << std::endl;
+        std::cout << "stitched er coords: " << stitched_ERs[i].start << " " << stitched_ERs[i].end << std::endl;
 
-        // each ER within the stitched_er is an exon
-
+        // add the ERs within the stitched_er
         for (unsigned int k = 0; k < stitched_ERs[i].er_ids.size(); ++k)
         {
-            gtf_row.change_feature("exon", i, k);
+
+            gtf_row.change_feature("exon", i + 1, k + 1);
+            std::cout  << "start= " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
+            gtf_row.end = gtf_row.start + stitched_ERs.at(i).all_coverages.at(k).first; // start + length = end
+
             out << gtf_row << std::endl;
+            gtf_row.start = gtf_row.end;
+
         }
+
+        if (gtf_row.end != stitched_ERs[i].end)
+        {
+            std::cerr << "ERROR: ends don't match: gtf_row end = " << gtf_row.end << " and stitched_ER end = " << stitched_ERs[i].end << std::endl;
+            std::cerr << "gtf start = " << gtf_row.start << std::endl;
+
+        }
+        assert(gtf_row.end == stitched_ERs[i].end);
+        // if (gtf_row.end != stitched_ERs[i].end)
+        // {
+        //     std::cerr << "ERROR: ends don't match: gtf_row end = " << gtf_row.end << " and stitched_ER end = " << stitched_ERs[i].end << std::endl;
+        //     std::cerr << "gtf start = " << gtf_row.start << std::endl;
+        // }
     }
     out.close();
 }

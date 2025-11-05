@@ -15,9 +15,9 @@
 class Averager {
 
     public:
-        void compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages, const std::vector<std::string>& chromosome_sequence);
+        void compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages);
 
-        void find_ERs(double threshold, int min_length, std::vector<std::string>& chromosome_sequence);
+        void find_ERs(double threshold, int min_length);
 
         // MEMBER VARIABLES
 

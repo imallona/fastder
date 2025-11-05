@@ -338,8 +338,8 @@ void Parser::search_directory() {
         if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
             std::cout << "MM file"<< std::endl;
             // TODO change!
-            read_mm(filename);
-            //read_mm_cached_always(filename);
+            //read_mm(filename);
+            read_mm_cached_always(filename);
 
         }
 

@@ -25,10 +25,10 @@ int main() {
 
     // get mean coverage vector
     Averager averager;
-    averager.compute_mean_coverage(parser.all_per_base_coverages, parser.chromosome_sequence);
+    averager.compute_mean_coverage(parser.all_per_base_coverages);
 
     // get expressed regions
-    averager.find_ERs(0.25, 5, parser.chromosome_sequence);
+    averager.find_ERs(0.25, 5);
     //std::cout << averager.expressed_regions.size() << std::endl;
     std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
     std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;
@@ -54,8 +54,8 @@ int main() {
     Integrator integrator = Integrator();
     integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
 
-    std::cout << "stitched ER index" << "\t" << "(" <<  "length" <<"," << "average coverage" << ")" << std::endl;
-    std::cout << "stitched_er.across_er_coverage" << "\t" << "stitched_er.start" << "\t" << "stitched_er.end" << "\t" << "stitched_er.total_length" << std::endl;
+    // std::cout << "stitched ER index" << "\t" << "(" <<  "length" <<"," << "average coverage" << ")" << std::endl;
+    // std::cout << "stitched_er.across_er_coverage" << "\t" << "stitched_er.start" << "\t" << "stitched_er.end" << "\t" << "stitched_er.total_length" << std::endl;
 
     std::cout << "number of stitched regions = "  << integrator.stitched_ERs.size() << std::endl;
 
