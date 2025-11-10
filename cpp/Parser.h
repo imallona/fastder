@@ -14,7 +14,7 @@ namespace fs = std::filesystem;
 
 class Parser {
 public:
-    Parser(std::string _path);
+    Parser(std::string _path, std::vector<std::string> chromosomes_);
     void search_directory();
     // Cache MM file because it takes so long to parse
     void save_mm_cache_(const std::filesystem::path& cache) const;
@@ -34,6 +34,7 @@ public:
     // TODO add function get_rail_id_from_filename(filename)?
 
     std::string path;
+    std::vector<std::string> chromosomes;
     std::vector<std::vector<BedGraphRow>> all_bedgraphs; //TODO maybe change to unordered map with key = sample id, value = bedgraph of the sample?
     std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages; //NOT ordered by chromosomes
     // store RR info for each splice junctions
@@ -48,32 +49,31 @@ public:
 
 
     const std::vector<std::string> permitted_chromosomes =  {
-        //"chr1",
-         //"chr2",
-        // "chr3",
-        // "chr4",
-        // "chr5",
-        // "chr6",
-        // "chr7",
-        // "chr8",
-        //"chr9",
-        // "chr10",
-        // "chr11",
-        // "chr12",
-        // "chr13",
-        // "chr14",
-        // "chr15",
+        "chr1",
+         "chr2",
+         "chr3",
+         "chr4",
+         "chr5",
+         "chr6",
+         "chr7",
+         "chr8",
+        "chr9",
+         "chr10",
+         "chr11",
+         "chr12",
+         "chr13",
+         "chr14",
+         "chr15",
          "chr16",
-        // "chr17",
-         //"chr18",
+         "chr17",
+         "chr18",
          "chr19",
-        // "chr20",
+        "chr20",
          "chr21",
-        // "chr22",
-         //"chrX",
+         "chr22",
+         "chrX",
     };
 
- std::vector<std::string> chromosome_sequence;
 
 
 };

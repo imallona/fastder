@@ -83,20 +83,23 @@ void Averager::find_ERs(double threshold, int min_length)//, std::vector<std::st
         workers[chrom] = std::async(std::launch::async, [&, chrom]
         {
             int start = 0;
-            double current_avg = 0;
+            double current_sum = 0;
             int count = 0;
             std::vector<BedGraphRow> chrom_expressed_regions;
             for (unsigned int i = 0; i < mean_coverage[chrom].size(); i++)
             {
                 double coverage =  mean_coverage[chrom][i];
                 // coverage is less than threshold
-                if ( mean_coverage[chrom][i] <= threshold)
+                if (mean_coverage[chrom][i] <= threshold)
                 {
                     // region at least 5 bp long, append to results
                     if ((i - start) > min_length)
                     {
-                        current_avg /= (i - 1 - start);
-                        BedGraphRow expressed_region = BedGraphRow(chrom, start, i - 1, current_avg);
+                        double current_avg = current_sum / (i - start);
+                        //++count;
+                        assert(count == i - start);
+                        std::cout << "count: " << count << ", len = " << i - start << std::endl;
+                        BedGraphRow expressed_region = BedGraphRow(chrom, start, i, current_avg);
 
                         //expressed_region.print();
                         chrom_expressed_regions.push_back(expressed_region);
@@ -104,13 +107,14 @@ void Averager::find_ERs(double threshold, int min_length)//, std::vector<std::st
                     }
                     //region too short to be appended, reset start and current avg
                     start = i + 1;
-                    current_avg = 0;
+                    count = 0;
+                    current_sum = 0;
 
                 }
                 // add to current ER
                 else if (coverage > threshold)
                 {
-                    current_avg += coverage;
+                    current_sum += coverage;
                     ++count;
                 }
 

@@ -11,31 +11,71 @@
 #include "GTFRow.h"
 #include "Integrator.h"
 
-int main() {
+int main(int argc, char* argv[]) {
+    // parse command-line arguments
+    std::vector<std::string> chromosomes;
+    // default values (if not provided by user)
+    int position_tolerance = 5;
+    double coverage_tolerance = 0.1;
+    for (int i = 1; i < argc; i++)
+    {
+        std::string arg = argv[i];
 
+        if (arg == "--chr")
+        {
+            ++i;
+            while (i < argc && std::string(argv[i]).rfind("--", 0) != std::string::npos )
+            {
+                chromosomes.push_back(argv[i]);
+                ++i;
+            }
+            // decrement i again
+            --i;
+
+        }
+        else if (arg == "--position-tol")
+        {
+            position_tolerance = atoi(argv[i]);
+        }
+
+        else if (arg == "--coverage-tol")
+        {
+            coverage_tolerance = std::stod(argv[i]);
+        }
+        else
+        {
+            std::cout << "unknown argument '" << argv[0] << "'" << std::endl;
+        }
+    }
     // parse files
-    std::string directory = "../data";
+    std::string directory = "../data/test_exon_skipping";
     std::cout << "Enter directory name: ";
     //std::cin >> directory;
 
 
     // parse files
-    Parser parser(directory);
+    Parser parser(directory, chromosomes);
     parser.search_directory();
 
     // get mean coverage vector
     Averager averager;
     averager.compute_mean_coverage(parser.all_per_base_coverages);
-
+    for (const auto& cov : parser.all_per_base_coverages[0])
+    {
+        std::cout << cov.first << ": ";
+        for (const auto& val : cov.second)
+            std::cout << val << " ";
+        std::cout << std::endl;
+    }
     // get expressed regions
     averager.find_ERs(0.25, 5);
     //std::cout << averager.expressed_regions.size() << std::endl;
-    std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
-    std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;
+    // std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
+    // std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;
 
-    for (int i = 0; i  < 20; ++i)
+    for (int i = 0; i  < averager.expressed_regions.size(); ++i)
     {
-        averager.expressed_regions.at(parser.chromosome_sequence.at(0)).at(i).print();
+        averager.expressed_regions.at(parser.chromosomes.at(0)).at(i).print();
     }
     std::cout << "*****************************" << std::endl;
     std::cout << " nr of chromosomes: " << parser.mm_chrom_sj.size() << std::endl;
@@ -43,15 +83,15 @@ int main() {
     {
         std::cout << " chrom " << chrom.first << " : " << chrom.second.size() << std::endl;
     }
-    auto it = parser.mm_chrom_sj.begin();
-    for (int i = 0; i  < 20; ++i)
-    {
-        assert(it->second.size() >= 20);
-        std::cout << parser.rr_all_sj[it->second.at(i)] << std::endl;
-
-    }
+    // auto it = parser.mm_chrom_sj.begin();
+    // for (int i = 0; i  < 20; ++i)
+    // {
+    //     assert(it->second.size() >= 20);
+    //     std::cout << parser.rr_all_sj[it->second.at(i)] << std::endl;
+    //
+    // }
     // use splice junctions to stitch together expressed regions
-    Integrator integrator = Integrator();
+    Integrator integrator = Integrator(coverage_tolerance, position_tolerance);
     integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
 
     // std::cout << "stitched ER index" << "\t" << "(" <<  "length" <<"," << "average coverage" << ")" << std::endl;

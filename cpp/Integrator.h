@@ -18,7 +18,7 @@
 class Integrator
 {
     public:
-    Integrator();
+    Integrator(double coverage_tolerance_, int position_tolerance_);
 
     void stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::map<std::string, std::vector<uint64_t>>& mm_chrom_sj, const std::vector<SJRow>& rr_all_sj);
     bool within_threshold(double val1, double val2);

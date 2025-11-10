@@ -17,8 +17,25 @@
 #include <filesystem>
 
 // constructor
-Parser::Parser(std::string _path) {
+Parser::Parser(std::string _path, std::vector<std::string> chromosomes_) {
     path = _path;
+    // default: use all chromosomes
+    if (chromosomes_.empty())
+    {
+        chromosomes = permitted_chromosomes;
+    }
+
+    else
+    {
+        for (auto chr : chromosomes_)
+        {
+            if (std::find(permitted_chromosomes.begin(), permitted_chromosomes.end(), chr) != permitted_chromosomes.end())
+            {
+                chromosomes.push_back(chr);
+            }
+        }
+    }
+
 }
 
 // function to prevent reading in Y chromosome and quality check chromosomes like ERCC
@@ -67,6 +84,7 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
     {
         // read in line by line
         std::istringstream iss(line);
+        //std::cout << line  << std::endl;
         BedGraphRow row = BedGraphRow();
         iss >> row.chrom >> row.start >> row.end >> row.coverage;
         if (chr_permitted(row.chrom)){
@@ -75,6 +93,7 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
             // end is not inclusive, since row1.end == row2.start of the next row
             row.total_reads = row.length * row.coverage; //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
             library_size += row.total_reads;
+            row.print();
             bedgraph.push_back(row);
         }
 
@@ -113,16 +132,17 @@ void Parser::read_rr(std::string filename)
 
         // rr_all_sj needs to contain all sj_ids, even those of chromosomes that aren't provided in the bedgraph files --> otherwise the mapping from RR to MM file via sj_id is broken
         rr_all_sj.push_back(row);
+        std::cout << rr_all_sj.back() << std::endl;
 
-        // store the sequence of chromosomes in the RR file --> append chromosome to vector if it's not an element of the vector yet
-        // chromosome_sequence will serve as the key iteration sequence for ALL unordered maps where key = chromosome!
-        if (this->chr_permitted(row.chrom) && std::ranges::find(chromosome_sequence, row.chrom) == chromosome_sequence.end()) {
-            chromosome_sequence.push_back(row.chrom);
-        }
+        // store chromosome the sequence of chromosomes in the RR file --> append chromosome to vector if it's not an element of the vector yet
+        // if (this->chr_permitted(row.chrom) && std::ranges::find(chromosomes, row.chrom) == chromosomes.end()) {
+        //     std::cout << row << std::endl;
+        //     chromosomes.push_back(row.chrom);
+        // }
 
     }
-    std::cout << "nr of splice junctions in this study: " << rr_all_sj.size() << std::endl;
-    assert(rr_all_sj.size() == 9484210);
+    std::cout << "nr of splice junctions in this study (not user-defined samples): " << rr_all_sj.size() << std::endl;
+    //assert(rr_all_sj.size() == 9484210);
 
 
 
@@ -165,6 +185,7 @@ void Parser::read_mm(std::string filename) {
             if (!seen_header) {
                 // header: 9484210	2931	699368828, actual #lines = 699368831
                 iss >> nr_of_sj >> nr_of_samples >> sj_occ_in_samples;
+                std::cout << nr_of_sj << ", " << rr_all_sj.size() << std::endl;
                 assert(nr_of_sj == rr_all_sj.size());
                 seen_header = true;
                 continue;
@@ -175,14 +196,14 @@ void Parser::read_mm(std::string filename) {
             unsigned int mm_id, count;
 
             if (!(iss >> sj_id >> mm_id >> count)){
-                std::cout << "malformed line in MM file: " << line << std::endl;
+                std::cout << "[ERROR] Malformed line in MM file: " << line << std::endl;
                 std::cout << line << std::endl;
                 continue;
             }
 
             // OLD: mm_by_samples[sample_id].push_back(std::make_pair(sj_id, count));
             // NEW: cumulative counts of a sj_id across all samples in the input
-
+            std::cout << line << std::endl;
             // find the rail_id based on the mm_id --> only add sj_id if the mm_id is part of the samples
             auto it = std::find_if(rail_id_to_mm_id.begin(), rail_id_to_mm_id.end(), [&] (const auto& p)
             {
@@ -192,12 +213,13 @@ void Parser::read_mm(std::string filename) {
             // add count if the mm was found and if chr is in bedgraph
             //std::cout << rr_all_sj[sj_id].chrom << " for splice junction " << sj_id << std::endl;
 
-            if (it != rail_id_to_mm_id.end() && this->chr_permitted(rr_all_sj[sj_id].chrom)) // rail_id_to_mm_id has <rail_id, mm_id> mapping
+            if (it != rail_id_to_mm_id.end() && this->chr_permitted(rr_all_sj[sj_id - 1].chrom)) // rail_id_to_mm_id has <rail_id, mm_id> mapping
             {
                 // store vector of sj_ids for each chromosome
-                mm_chrom_sj[rr_all_sj[sj_id].chrom].push_back(sj_id); // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
-
+                mm_chrom_sj[rr_all_sj[sj_id - 1].chrom].push_back(sj_id); // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
+                std::cout << mm_chrom_sj[rr_all_sj[sj_id - 1].chrom].back() << std::endl;
             }
+            //
         }
         std::cout << "nr of lines read in MM file: " << count_lines << std::endl;
         assert(sj_occ_in_samples <= count_lines);
@@ -338,8 +360,8 @@ void Parser::search_directory() {
         if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
             std::cout << "MM file"<< std::endl;
             // TODO change!
-            //read_mm(filename);
-            read_mm_cached_always(filename);
+            read_mm(filename);
+            //read_mm_cached_always(filename);
 
         }
 
@@ -349,6 +371,7 @@ void Parser::search_directory() {
             uint64_t library_size = 0; // ensure that the integer type is large enough
             std::vector<BedGraphRow> sample_bedgraph = read_bedgraph(filename, library_size);
             std::unordered_map<std::string, std::vector<double>> per_base_coverage;
+            std::cout << "library_size: " << library_size<< std::endl;
 
 
             //normalize to CPM and expand rows to per base coverage (also normalized)

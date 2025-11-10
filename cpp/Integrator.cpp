@@ -6,9 +6,11 @@
 #include <Integrator.h>
 
 // constructor
-Integrator::Integrator()
+Integrator::Integrator(double coverage_tolerance_, int position_tolerance_)
 {
     stitched_ERs = {}; // empty vector with elements of type StitchedER
+    coverage_tolerance = coverage_tolerance_;
+    position_tolerance = position_tolerance_;
 }
 
 
@@ -20,9 +22,11 @@ bool Integrator::within_threshold(double val1, double val2){
     return val2 >= tolerance_bottom && val2 <= tolerance_top;
 }
 
+
 bool Integrator::within_threshold(uint64_t pos_1, uint64_t pos_2){
     //example: pos_1 = 15 (end position of exon), pos_2 = 18 (start position of SJ)
-    // 15 >= 18 - 10 and 15 <= 18 + 10
+    // pos_1 must be within 18 +- 5
+    // 15 >= 18 - 5 and 15 <= 18 + 5
     return pos_1 >= pos_2 - position_tolerance && pos_1 <= pos_2 + position_tolerance;
 }
 
@@ -43,18 +47,27 @@ bool Integrator::sj_too_far_back(const uint64_t most_recent_er_end, const uint64
 
 void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::map<std::string, std::vector<uint64_t>>& mm_chrom_sj, const std::vector<SJRow>& rr_all_sj)
 {
+    std::cout << "--TEST--" << std::endl;
+    for (auto& cov : mm_chrom_sj.at("chr1"))
+    {
+        std::cout << cov << ", " << rr_all_sj.at(cov - 1) << std::endl;
+    }
+    std::cout << "--TEST--" << std::endl;
     // iterate over chromosomes and sj_ids -> sjs.first = chrom, sjs.second = vector<sj_id>
     for (auto& sjs : mm_chrom_sj)
     {
         std::string chrom = sjs.first;
         StitchedER er1 = StitchedER(expressed_regions.at(chrom).at(0), 0); // define the first StitchedER, currently consisting of 1 ER
         stitched_ERs.push_back(er1);
+        std::cout << "first ER = " ;
+        expressed_regions.at(chrom).at(0).print();
         bool first_er = true;
         auto current_sj = sjs.second.begin(); // iterator over the vector of sj_id
-        std::cout << stitched_ERs.front() << std::endl;
+        std::cout << "first SJ = " << rr_all_sj[*current_sj - 1].start << " <--> " <<  rr_all_sj[*current_sj - 1].end << std::endl;
+
         int max_stitched_ers = 0;
-        // iterate over expressed regions
-        for (unsigned int i = 0; i < expressed_regions.at(chrom).size(); ++i)
+        // iterate over expressed regions starting with region 2 (since region 1 was already appended)
+        for (unsigned int i = 1; i < expressed_regions.at(chrom).size(); ++i)
         {
             // TODO what about the last SJ, make sure to use it too
             //only compare if we aren't at the last SJ yet
@@ -66,24 +79,22 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                 // skip to SJ with coordinates that line up with the most recent ER
                 std::cout << "upstream ER: " << expressed_regions[chrom][most_recent_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[chrom][most_recent_er.er_ids.back()].start << "\t" << expressed_regions[chrom][most_recent_er.er_ids.back()].end << ", (len) " << expressed_regions[chrom][most_recent_er.er_ids.back()].end -  expressed_regions[chrom][most_recent_er.er_ids.back()].start <<std::endl;
                 std::cout << "downstream ER: " << expressed_region.chrom << ", (pos) " << expressed_region.start << "\t" << expressed_region.end << ", (len) " <<  expressed_region.end  - expressed_region.start << std::endl;
-                while (current_sj != sjs.second.end() && within_threshold(most_recent_er.end, rr_all_sj[*current_sj].start) && rr_all_sj[*current_sj].chrom == chrom)
+                std::cout << "current SJ = " << rr_all_sj[*current_sj - 1].start << " <--> " <<  rr_all_sj[*current_sj - 1].end << std::endl;
+                while (current_sj != sjs.second.end() && !within_threshold(most_recent_er.end, rr_all_sj[*current_sj - 1].start) && rr_all_sj[*current_sj - 1].chrom == chrom)
                 {
-                    std::cout << "current SJ = " << rr_all_sj[*current_sj].start << " <--> " <<  rr_all_sj[*current_sj].end << std::endl;
                     ++current_sj;
+                    std::cout << "current SJ = " << rr_all_sj[*current_sj - 1].start << " <--> " <<  rr_all_sj[*current_sj - 1].end << std::endl;
                 }
-                std::cout << "current SJ = " << rr_all_sj[*current_sj].start << " <--> " <<  rr_all_sj[*current_sj].end << std::endl;
+
                 // get rr_all_sj, which is a vector of SJRows
-                if (is_similar(most_recent_er, expressed_region, rr_all_sj[*current_sj]))
+                if (is_similar(most_recent_er, expressed_region, rr_all_sj[*current_sj - 1]))
                 {
-                    //
-                    // std::cout << "upstream ER: " << "(chr) " << expressed_regions[chrom][most_recent_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[chrom][most_recent_er.er_ids.back()].start << "\t" << expressed_regions[chrom][most_recent_er.er_ids.back()].end << std::endl;
-                    // std::cout << "current SJ: " << "(chr) " << rr_all_sj[*current_sj].chrom  << ", (pos) " << rr_all_sj[*current_sj].start << "\t" << rr_all_sj[*current_sj].end << std::endl;
-                    // std::cout << "downstream ER: " << "(chr) " << expressed_region.chrom << ", (pos) " << expressed_region.start << "\t" << expressed_region.end << std::endl;
-                    std::cout << expressed_regions[chrom][most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[*current_sj].start << ", " << rr_all_sj[*current_sj].end<< " <--> " <<  expressed_region.start << std::endl;
+
+                    std::cout << expressed_regions[chrom][most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[*current_sj - 1].start << ", " << rr_all_sj[*current_sj - 1].end<< " <--> " <<  expressed_region.start << std::endl;
 
                     //expressed_region.print();
                     // the chromosome that
-                    assert(rr_all_sj[*current_sj].chrom == expressed_region.chrom && expressed_region.chrom == expressed_regions[chrom][most_recent_er.er_ids.back()].chrom);
+                    assert(rr_all_sj[*current_sj - 1].chrom == expressed_region.chrom && expressed_region.chrom == expressed_regions[chrom][most_recent_er.er_ids.back()].chrom);
                     most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
 
                     // std::cout << "STITCHED region: current er_id = " << i << std::endl;
@@ -113,6 +124,7 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                     }
 
                 }
+                std::cout << "\n";
 
 
             }
