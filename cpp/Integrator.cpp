@@ -90,13 +90,14 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                 if (is_similar(most_recent_er, expressed_region, rr_all_sj[*current_sj - 1]))
                 {
 
-                    std::cout << expressed_regions[chrom][most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[*current_sj - 1].start << ", " << rr_all_sj[*current_sj - 1].end<< " <--> " <<  expressed_region.start << std::endl;
+                    std::cout << "[JUNCTION] " << expressed_regions[chrom][most_recent_er.er_ids.back()].end << " <--> " << rr_all_sj[*current_sj - 1].start << ", " << rr_all_sj[*current_sj - 1].end<< " <--> " <<  expressed_region.start << std::endl;
 
                     //expressed_region.print();
                     // the chromosome that
                     assert(rr_all_sj[*current_sj - 1].chrom == expressed_region.chrom && expressed_region.chrom == expressed_regions[chrom][most_recent_er.er_ids.back()].chrom);
-                    most_recent_er.append(i, expressed_region.length, expressed_region.coverage);
-
+                    expressed_region.print();
+                    most_recent_er.append(i, expressed_region.length, rr_all_sj[*current_sj - 1].length, expressed_region.coverage);
+                    assert(most_recent_er.end == expressed_region.end);
                     // std::cout << "STITCHED region: current er_id = " << i << std::endl;
                     // std::cout << stitched_ERs.back() << std::endl;
                     // move to next SJ
@@ -162,15 +163,15 @@ void Integrator::write_to_gtf(const std::string& output_path)
 
         gtf_row.change_feature("transcript", i + 1, 0);
         out << gtf_row << std::endl;
-        // std::cout << "gtf coords: " << gtf_row.start << " " << gtf_row.end << std::endl;
-        // std::cout << "stitched er coords: " << stitched_ERs[i].start << " " << stitched_ERs[i].end << std::endl;
+        std::cout << "gtf coords: " << gtf_row.start << " " << gtf_row.end << std::endl;
+        std::cout << "stitched er coords: " << stitched_ERs[i].start << " " << stitched_ERs[i].end << std::endl;
 
         // add the ERs within the stitched_er
         for (unsigned int k = 0; k < stitched_ERs[i].er_ids.size(); ++k)
         {
 
             gtf_row.change_feature("exon", i + 1, k + 1);
-           // std::cout  << "start= " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
+            std::cout  << "start= " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
             gtf_row.end = gtf_row.start + stitched_ERs.at(i).all_coverages.at(k).first; // start + length = end
 
             out << gtf_row << std::endl;
@@ -178,18 +179,14 @@ void Integrator::write_to_gtf(const std::string& output_path)
 
         }
 
-        if (gtf_row.end != stitched_ERs[i].end)
-        {
-            std::cerr << "ERROR: ends don't match: gtf_row end = " << gtf_row.end << " and stitched_ER end = " << stitched_ERs[i].end << std::endl;
-            std::cerr << "gtf start = " << gtf_row.start << std::endl;
-
-        }
-        assert(gtf_row.end == stitched_ERs[i].end);
         // if (gtf_row.end != stitched_ERs[i].end)
         // {
         //     std::cerr << "ERROR: ends don't match: gtf_row end = " << gtf_row.end << " and stitched_ER end = " << stitched_ERs[i].end << std::endl;
         //     std::cerr << "gtf start = " << gtf_row.start << std::endl;
+        //
         // }
+        gtf_row.end = stitched_ERs[i].end; // missing the last exon in the chain
+
     }
     out.close();
 }

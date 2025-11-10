@@ -29,14 +29,15 @@ double StitchedER::get_avg_coverage(){
     return sum / full_length;
 }
 
-void StitchedER::append(unsigned int er_id,unsigned int length, double coverage)
+// note that er_id is 0-indexed
+void StitchedER::append(unsigned int er_id, unsigned int sj_length, unsigned int er_length, double coverage)
 {
 
     er_ids.push_back(er_id);
-    all_coverages.push_back({std::make_pair(length, coverage)});
+    all_coverages.push_back({std::make_pair(er_length, coverage)});
     across_er_coverage = this->get_avg_coverage();
-    total_length += length;
-    end += length; // TODO check that this is the same as end = er.end!
+    total_length += er_length; // only count er length
+    end = end + sj_length + er_length; // count er_length and sj_length to get the correct end position
 
 }
 

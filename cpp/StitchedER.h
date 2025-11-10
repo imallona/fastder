@@ -18,7 +18,7 @@ public:
     StitchedER() = default;
 
     StitchedER(const BedGraphRow& expressed_region, unsigned int er_id);
-    void append(unsigned int er_id,unsigned int length, double coverage);
+    void append(unsigned int er_id,unsigned int er_length, unsigned int sj_length, double coverage);
     double get_avg_coverage();
 
     //bool is_similar(double val1, double val2);
@@ -30,7 +30,7 @@ public:
     // example: stitched_ER consists of er_ids 45, 46, 47, 49 == vector indices of expressed_regions
     double across_er_coverage; // avg (weighted) coverage of all exons that are part of the stitched ER so far
     std::vector<std::pair<unsigned int, double>> all_coverages; // stores a pair of er length (= weight) + normalized average coverage of the er
-    unsigned int total_length;
+    unsigned int total_length; // combined length of all ERs (excluding spliced regions)
     uint64_t start;
     uint64_t end;
     std::string chrom;
