@@ -21,10 +21,14 @@ StitchedER::StitchedER(const BedGraphRow& expressed_region, int er_id)
 double StitchedER::get_avg_coverage(){
     double sum = 0;
     unsigned int full_length = 0;
+    // all_coverages: <length, coverage>
     for (auto& er : this->all_coverages){
-        sum += (er.first * er.second); // weighted sum of avg coverages across ERs
-        full_length += er.first;
-
+        // actually should be 0.0, but using a slightly larger value to avoid exact comparison of doubles
+        if (er.second >= 0.000001)
+        {
+            sum += (er.first * er.second); // weighted sum of avg coverages across ERs
+            full_length += er.first;
+        }
     }
     return sum / full_length;
 }

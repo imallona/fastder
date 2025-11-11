@@ -77,10 +77,9 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
         // iterate over expressed regions starting with region 2 (since region 1 was already appended)
         for (int i = 1; i < expressed_regions.at(chrom).size(); ++i)
         {
+            const auto& expressed_region = expressed_regions[chrom][i];
             //only compare if we aren't at the last SJ yet
             if (current_sj_id != sjs.second.end()){
-
-                const auto& expressed_region = expressed_regions[chrom][i];
                 StitchedER& current_stitched_er = stitched_ERs.back(); // this is one expressed region right now
 
                 // skip to SJ with coordinates that line up with the most recent ER
@@ -141,6 +140,11 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
 
 
             }
+            // no more splice junctions left, so each remaining expressed region forms its own StitchedER
+            else
+            {
+                stitched_ERs.push_back(StitchedER(expressed_region, i));
+            }
         }
         std::cout << "max_stitched_ers = " << max_stitched_ers<< std::endl;
     }
@@ -192,7 +196,7 @@ void Integrator::write_to_gtf(const std::string& output_path)
         {
             if (stitched_ERs[i].er_ids.at(k) != -1){
                 gtf_row.change_feature("exon", i + 1, exon_nr);
-                std::cout  << "start= " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
+                std::cout  << "start = " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
                 // need to use the SJ length as well
                 gtf_row.end = gtf_row.start + stitched_ERs.at(i).all_coverages.at(k).first; // start + length = end
                 gtf_row.score = stitched_ERs.at(i).all_coverages.at(k).second; // use the per-exon average coverage here instead of the overall coverage

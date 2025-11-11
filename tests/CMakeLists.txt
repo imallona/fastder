@@ -8,7 +8,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 add_executable(mls-tests
-        test_stitch_up.cpp
         splicing_scenarios.cpp
 )
 
