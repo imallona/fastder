@@ -86,8 +86,20 @@ void Averager::find_ERs(double threshold, int min_length)//, std::vector<std::st
             double current_sum = 0;
             int count = 0;
             std::vector<BedGraphRow> chrom_expressed_regions;
-            for (unsigned int i = 0; i < mean_coverage[chrom].size(); i++)
+            for (unsigned int i = 0; i <= mean_coverage[chrom].size(); i++)
             {
+                if (i == mean_coverage[chrom].size())
+                {
+                    double current_avg = current_sum / (i - start);
+                    BedGraphRow expressed_region = BedGraphRow(chrom, start, i, current_avg);
+                    //expressed_region.print();
+                    chrom_expressed_regions.push_back(expressed_region);
+
+
+                    break; // leave loop!!
+                }
+
+
                 double coverage =  mean_coverage[chrom][i];
                 // coverage is less than threshold
                 if (mean_coverage[chrom][i] <= threshold)
@@ -122,6 +134,8 @@ void Averager::find_ERs(double threshold, int min_length)//, std::vector<std::st
                 return chrom_expressed_regions;
             });
         }
+        // append the last expressed region
+
 
         //avoid using mutexes, just do single-threaded merge
         // TODO later use >1 thread per chromosome

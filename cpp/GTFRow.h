@@ -32,7 +32,6 @@ class GTFRow
             row.score << "\t" << row.strand << "\t" << row.frame << "\t" << row.attribute;
 
     }
-
 };
 
 

@@ -17,16 +17,16 @@ public:
     // MEMBER FUNCTIONS
     StitchedER() = default;
 
-    StitchedER(const BedGraphRow& expressed_region, unsigned int er_id);
-    void append(unsigned int er_id,unsigned int er_length, unsigned int sj_length, double coverage);
+    StitchedER(const BedGraphRow& expressed_region, int er_id);
+    void append(int er_id, unsigned int length, double coverage);
     double get_avg_coverage();
 
     //bool is_similar(double val1, double val2);
 
 
     // MEMBER VARIABLES
-
-    std::vector<unsigned int> er_ids; //all expressed regions in a stitched_ER, er_id corresponds to index of averager.expressed_regions
+    // TODO ensure that there are never more than INT_MAX expressed regions per chromosome!
+    std::vector<int> er_ids; //all expressed regions in a stitched_ER, er_id corresponds to index of averager.expressed_regions and is -1 for spliced regions
     // example: stitched_ER consists of er_ids 45, 46, 47, 49 == vector indices of expressed_regions
     double across_er_coverage; // avg (weighted) coverage of all exons that are part of the stitched ER so far
     std::vector<std::pair<unsigned int, double>> all_coverages; // stores a pair of er length (= weight) + normalized average coverage of the er

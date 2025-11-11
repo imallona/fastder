@@ -49,6 +49,7 @@ void GTFRow::change_feature(std::string ftr, unsigned int id, unsigned int exon_
     {
         attribute += "\"; exon_number \"";
         attribute += std::to_string(exon_nr);
+
     }
 
 
