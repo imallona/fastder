@@ -186,11 +186,12 @@ void Integrator::write_to_gtf(const std::string& output_path)
         {
             std::cout << x << std::endl;
         }
+        int exon_nr = 1;
         // add the ERs within the stitched_er
         for (unsigned int k = 0; k < stitched_ERs[i].er_ids.size(); ++k)
         {
             if (stitched_ERs[i].er_ids.at(k) != -1){
-                gtf_row.change_feature("exon", i + 1, k + 1);
+                gtf_row.change_feature("exon", i + 1, exon_nr);
                 std::cout  << "start= " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
                 // need to use the SJ length as well
                 gtf_row.end = gtf_row.start + stitched_ERs.at(i).all_coverages.at(k).first; // start + length = end
@@ -198,6 +199,7 @@ void Integrator::write_to_gtf(const std::string& output_path)
 
                 out << gtf_row << std::endl;
                 gtf_row.start = gtf_row.end;
+                ++exon_nr;
             }
             else
             {
