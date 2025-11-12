@@ -8,7 +8,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 add_executable(mls-tests
-        splicing_scenarios.cpp
+        UnitTests.cpp
 )
 
 target_link_libraries(mls-tests

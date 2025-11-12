@@ -17,14 +17,49 @@ int main(int argc, char* argv[]) {
     // default values (if not provided by user)
     int position_tolerance = 5;
     double coverage_tolerance = 0.1;
+    double coverage_threshold = 0.25;
+    std::string directory  = "../../data/test_exon_skipping";
+
+    bool directory_provided = false;
+
+    std::cout
+    << "\n "
+    << "\t \t \t WELCOME TO \n"
+        <<
+    "        _____ _    ____ _____ ____  _____ ____  \n"
+    "       |  ___/ \\  / ___|_   _|  _ \\| ____|  _ \\ \n"
+    "       | |_ / _ \\ \\___ \\ | | | | | |  _| | |_) |\n"
+    "       |  _/ ___ \\ ___) || | | |_| | |___|  _ < \n"
+    "       |_|/_/   \\_\\____/ |_| |____/|_____|_| \\_\\"
+    << "\n \n "
+    << std::endl;
+    std::cout << "Usage: fastder [options]\n\n"
+            << "Options:\n"
+            << "  --dir <path> ...             [REQUIRED] Relative path from build directory to file directory. \n"
+            << "                               Example: --dir ../../data/test_exon_skipping \n\n"
+            << "  --chr <chr1> <chr2> ...      List of chromosomes to process. Default = ALL\n"
+            << "                               Example: --chr chr1 chr2 chr3\n\n"
+            << "  --coverage-threshold <float> Coverage threshold to qualify as an expressed region (ER), in [CPM]. Normalization is done in-place by library size. Default = 0.25 CPM.\n"
+            << "                               Example: --coverage-threshold 0.25\n\n"
+            << "  --position-tolerance <int>   Maximum permitted position deviation of splice junction and ER coordinates, in [bp]. Default = 5 bp\n"
+            << "                               Example: --position-tolerance 5\n\n"
+            << "  --coverage-tolerance <float> Permitted coverage deviation between stitched ERs, as a proportion (e.g. 0.1 = 10 %). Default = 0.1\n"
+            << "                               Example: --coverage-tolerance 0.1\n\n"
+            << "  --help                       Show this help message.\n\n"
+            << "Example:\n"
+            << "  ./fastder  --dir ../../data/test_exon_skipping --chr chr1 chr2 --position-tolerance 5 "
+             "--coverage-threshold 0.25 --coverage-tolerance 0.1\n"
+            << std::endl;
+
     for (int i = 1; i < argc; i++)
     {
         std::string arg = argv[i];
 
-        if (arg == "--chr")
+        if (arg == "--chr") // --chr chr1 chr2
         {
             ++i;
-            while (i < argc && std::string(argv[i]).rfind("--", 0) != std::string::npos )
+            // the next argument is indicated with the --
+            while (i < argc && std::string(argv[i]).rfind("--", 0) == std::string::npos)
             {
                 chromosomes.push_back(argv[i]);
                 ++i;
@@ -33,25 +68,57 @@ int main(int argc, char* argv[]) {
             --i;
 
         }
-        else if (arg == "--position-tol")
+        else if (arg == "--pos-tol")
         {
-            position_tolerance = atoi(argv[i]);
+            position_tolerance = atoi(argv[++i]);
         }
 
-        else if (arg == "--coverage-tol")
+        else if (arg == "--cov-thr")
         {
-            coverage_tolerance = std::stod(argv[i]);
+            coverage_threshold = std::stod(argv[++i]);
+        }
+
+        else if (arg == "--cov-tol")
+        {
+            coverage_tolerance = std::stod(argv[++i]);
+        }
+
+        else if (arg == "--dir")
+        {
+            directory = argv[++i];
+            directory_provided = true;
+        }
+        else if (arg == "--help")
+        {
+            std::cout << "Usage: fastder [options]\n\n"
+                        << "Options:\n"
+                        << "  --dir <path> ...             [REQUIRED] Relative path from build directory to file directory. \n"
+                        << "                               Example: --dir ../../data/test_exon_skipping \n\n"
+                        << "  --chr <chr1> <chr2> ...      List of chromosomes to process. Default = ALL\n"
+                        << "                               Example: --chr chr1 chr2 chr3\n\n"
+                        << "  --coverage-threshold <float> Coverage threshold to qualify as an expressed region (ER), in [CPM]. Normalization is done in-place by library size. Default = 0.25 CPM.\n"
+                        << "                               Example: --coverage-threshold 0.25\n\n"
+                        << "  --position-tolerance <int>   Maximum permitted position deviation of splice junction and ER coordinates, in [bp]. Default = 5 bp\n"
+                        << "                               Example: --position-tolerance 5\n\n"
+                        << "  --coverage-tolerance <float> Permitted coverage deviation between stitched ERs, as a proportion (e.g. 0.1 = 10 %). Default = 0.1\n"
+                        << "                               Example: --coverage-tolerance 0.1\n\n"
+                        << "  --help                       Show this help message.\n\n"
+                        << "Example:\n"
+                        << "  ./fastder --chr chr1 chr2 --position-tolerance 5 "
+                         "--coverage-threshold 0.25 --coverage-tolerance 0.1\n"
+                        << std::endl;
+
         }
         else
         {
-            std::cout << "unknown argument '" << argv[0] << "'" << std::endl;
+            std::cout << "[ERROR] Unknown argument '" << argv[i] << "'" << std::endl;
         }
     }
-    // parse files
-    std::string directory = "../data/test_exon_skipping";
-    std::cout << "Enter directory name: ";
-    //std::cin >> directory;
 
+    // if (!directory_provided)
+    // {
+    //     std::cout << "[ERROR] No working directory provided! Quitting...";
+    // }
 
     // parse files
     Parser parser(directory, chromosomes);
@@ -60,13 +127,13 @@ int main(int argc, char* argv[]) {
     // get mean coverage vector
     Averager averager;
     averager.compute_mean_coverage(parser.all_per_base_coverages);
-    for (const auto& cov : parser.all_per_base_coverages[0])
-    {
-        std::cout << cov.first << ": ";
-        for (const auto& val : cov.second)
-            std::cout << val << " ";
-        std::cout << std::endl;
-    }
+    // for (const auto& cov : parser.all_per_base_coverages[0])
+    // {
+    //     std::cout << cov.first << ": ";
+    //     for (const auto& val : cov.second)
+    //         std::cout << val << " ";
+    //     std::cout << std::endl;
+    // }
     // get expressed regions
     averager.find_ERs(0.25, 5);
     //std::cout << averager.expressed_regions.size() << std::endl;
@@ -83,13 +150,7 @@ int main(int argc, char* argv[]) {
     {
         std::cout << " chrom " << chrom.first << " : " << chrom.second.size() << std::endl;
     }
-    // auto it = parser.mm_chrom_sj.begin();
-    // for (int i = 0; i  < 20; ++i)
-    // {
-    //     assert(it->second.size() >= 20);
-    //     std::cout << parser.rr_all_sj[it->second.at(i)] << std::endl;
-    //
-    // }
+
     // use splice junctions to stitch together expressed regions
     Integrator integrator = Integrator(coverage_tolerance, position_tolerance);
     integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);

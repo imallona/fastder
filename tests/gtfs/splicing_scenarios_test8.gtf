@@ -1,0 +1,17 @@
+##description: expressed region annotation of genome based on bigwig and MM / RR splice junction information.
+##provider: FASTDER
+##contact: marlehmann@ethz.ch
+##format: gtf
+##date: 2025-11-12
+1	fastder	gene	9000	9200	2	.	.	gene_id "gene1"; gene_name "faster_gene1";
+1	fastder	transcript	9000	9200	2	.	.	gene_id "gene1"; transcript_id "tx1";
+1	fastder	exon	9000	9200	2	.	.	gene_id "gene1"; transcript_id "tx1"; exon_number "1";
+1	fastder	gene	10000	15300	30.9503	.	.	gene_id "gene2"; gene_name "faster_gene2";
+1	fastder	transcript	10000	15300	30.9503	.	.	gene_id "gene2"; transcript_id "tx2";
+1	fastder	exon	10000	10500	30	.	.	gene_id "gene2"; transcript_id "tx2"; exon_number "1";
+1	fastder	exon	11000	14201	31	.	.	gene_id "gene2"; transcript_id "tx2"; exon_number "2";
+1	fastder	exon	14999	15300	32	.	.	gene_id "gene2"; transcript_id "tx2"; exon_number "3";
+2	fastder	gene	1501	4000	10.1188	.	.	gene_id "gene3"; gene_name "faster_gene3";
+2	fastder	transcript	1501	4000	10.1188	.	.	gene_id "gene3"; transcript_id "tx3";
+2	fastder	exon	1501	2999	10	.	.	gene_id "gene3"; transcript_id "tx3"; exon_number "1";
+2	fastder	exon	3798	4000	11	.	.	gene_id "gene3"; transcript_id "tx3"; exon_number "2";
