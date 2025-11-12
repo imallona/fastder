@@ -22,6 +22,7 @@ Parser::Parser(std::string _path, std::vector<std::string> chromosomes_) {
     // default: use all chromosomes
     if (chromosomes_.empty())
     {
+        std::cout << "[INFO] No chromosomes provided!" << std::endl;
         chromosomes = permitted_chromosomes;
     }
 
@@ -29,6 +30,7 @@ Parser::Parser(std::string _path, std::vector<std::string> chromosomes_) {
     {
         for (auto chr : chromosomes_)
         {
+            // add chr to list of whitelisted chromosomes
             if (std::find(permitted_chromosomes.begin(), permitted_chromosomes.end(), chr) != permitted_chromosomes.end())
             {
                 chromosomes.push_back(chr);
@@ -38,12 +40,12 @@ Parser::Parser(std::string _path, std::vector<std::string> chromosomes_) {
 
 }
 
-// function to prevent reading in Y chromosome and quality check chromosomes like ERCC
+// function to prevent using splice junctions for chromosomes that weren't parsed
 bool Parser::chr_permitted(const std::string& chr) const
 {
-    for (auto& permitted_chromosome : this->permitted_chromosomes)
+    for (auto& provided_chr : this->chromosomes)
     {
-        if (chr == permitted_chromosome)
+        if (chr == provided_chr)
         {
             return true;
         }
@@ -87,13 +89,13 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
         //std::cout << line  << std::endl;
         BedGraphRow row = BedGraphRow();
         iss >> row.chrom >> row.start >> row.end >> row.coverage;
-        if (chr_permitted(row.chrom)){
+        // check if the row is part of the chromosome list passed by the user
+        if (std::find(chromosomes.begin(), chromosomes.end(), row.chrom) != chromosomes.end()){
             // calculate total number of reads that map to this bp interval
             row.length = row.end - row.start;
             // end is not inclusive, since row1.end == row2.start of the next row
             row.total_reads = row.length * row.coverage; //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
             library_size += row.total_reads;
-            row.print();
             bedgraph.push_back(row);
         }
 
@@ -132,7 +134,7 @@ void Parser::read_rr(std::string filename)
 
         // rr_all_sj needs to contain all sj_ids, even those of chromosomes that aren't provided in the bedgraph files --> otherwise the mapping from RR to MM file via sj_id is broken
         rr_all_sj.push_back(row);
-        std::cout << rr_all_sj.back() << std::endl;
+        //std::cout << rr_all_sj.back() << std::endl;
 
         // store chromosome the sequence of chromosomes in the RR file --> append chromosome to vector if it's not an element of the vector yet
         // if (this->chr_permitted(row.chrom) && std::ranges::find(chromosomes, row.chrom) == chromosomes.end()) {
@@ -203,7 +205,7 @@ void Parser::read_mm(std::string filename) {
 
             // OLD: mm_by_samples[sample_id].push_back(std::make_pair(sj_id, count));
             // NEW: cumulative counts of a sj_id across all samples in the input
-            std::cout << line << std::endl;
+
             // find the rail_id based on the mm_id --> only add sj_id if the mm_id is part of the samples
             auto it = std::find_if(rail_id_to_mm_id.begin(), rail_id_to_mm_id.end(), [&] (const auto& p)
             {
@@ -217,7 +219,7 @@ void Parser::read_mm(std::string filename) {
             {
                 // store vector of sj_ids for each chromosome
                 mm_chrom_sj[rr_all_sj[sj_id - 1].chrom].push_back(sj_id); // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
-                std::cout << mm_chrom_sj[rr_all_sj[sj_id - 1].chrom].back() << std::endl;
+                //std::cout << mm_chrom_sj[rr_all_sj[sj_id - 1].chrom].back() << std::endl;
             }
             //
         }
@@ -233,7 +235,7 @@ void Parser::read_url_csv(std::string filename)
     std::ifstream file(filename);
     if (!file.is_open())
     {
-        std::cerr << "Error opening file " << filename << std::endl;
+        std::cerr << "[ERROR] Could not open file " << filename << std::endl;
     }
 
     std::string line;
@@ -256,6 +258,7 @@ void Parser::read_url_csv(std::string filename)
         if (std::getline(iss, rail_id_str, ',') && std::getline(iss, sample_id, ','))
         {
             //convert to integer
+
             int rail_id = std::stoi(rail_id_str);
             rail_id_to_ext_id.push_back(std::make_pair(rail_id, sample_id));
         }
@@ -281,6 +284,8 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
         {
             // search for the external_id in rail_id_to_ext_id and then obtain the rail_id
             // the external id is part of the filename for all three sources GTEX, TCGA and SRA
+            std::cout <<" sample.second " << sample.second << std::endl;
+            std::cout <<" bedgraph file " << bedgraph_file<< std::endl;
             return bedgraph_file.find(sample.second) != std::string::npos;
         });
         if (it != rail_id_to_ext_id.end())
@@ -292,7 +297,7 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
         }
         else
         {
-            std::cout << "ERROR: file " << bedgraph_file << "has no rail_id! " << std::endl;
+            std::cout << "[ERROR] File " << bedgraph_file << " has no rail_id! " << std::endl;
         }
     }
 }
@@ -333,7 +338,7 @@ void Parser::search_directory() {
     // program cannot run with missing BigWig URL list
     if (!contains_ids)
     {
-        std::cerr << "MISSING BigWig URL list! Cannot proceed...";
+        std::cerr << "[ERROR] Missing BigWig URL list! Exiting...";
         return;
     }
 
@@ -379,6 +384,7 @@ void Parser::search_directory() {
             {
                 row.normalize(library_size);
                 compute_per_base_coverage(row, per_base_coverage);
+               // row.print();
             }
 
             // add to matrix of all bedgraphs per sample

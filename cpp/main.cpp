@@ -12,13 +12,13 @@
 #include "Integrator.h"
 
 int main(int argc, char* argv[]) {
-    // parse command-line arguments
-    std::vector<std::string> chromosomes;
+
+    std::vector<std::string> chromosomes = {"chr21"}; // "chr1", "chr9",
     // default values (if not provided by user)
     int position_tolerance = 5;
     double coverage_tolerance = 0.1;
     double coverage_threshold = 0.25;
-    std::string directory  = "../../data/test_exon_skipping";
+    std::string directory  = "../simulated_data/SimulatedDataMLS"; //../data";//"
 
     bool directory_provided = false;
 
@@ -51,6 +51,7 @@ int main(int argc, char* argv[]) {
              "--coverage-threshold 0.25 --coverage-tolerance 0.1\n"
             << std::endl;
 
+    // parse command-line arguments
     for (int i = 1; i < argc; i++)
     {
         std::string arg = argv[i];
@@ -100,7 +101,7 @@ int main(int argc, char* argv[]) {
                         << "                               Example: --coverage-threshold 0.25\n\n"
                         << "  --position-tolerance <int>   Maximum permitted position deviation of splice junction and ER coordinates, in [bp]. Default = 5 bp\n"
                         << "                               Example: --position-tolerance 5\n\n"
-                        << "  --coverage-tolerance <float> Permitted coverage deviation between stitched ERs, as a proportion (e.g. 0.1 = 10 %). Default = 0.1\n"
+                        << "  --coverage-tolerance <float> Permitted coverage deviation within a stitched ER, as a proportion (e.g. 0.1 = 10 %). Default = 0.1\n"
                         << "                               Example: --coverage-tolerance 0.1\n\n"
                         << "  --help                       Show this help message.\n\n"
                         << "Example:\n"
@@ -119,6 +120,10 @@ int main(int argc, char* argv[]) {
     // {
     //     std::cout << "[ERROR] No working directory provided! Quitting...";
     // }
+    for (auto chr : chromosomes)
+    {
+        std::cout << chr << std::endl;
+    }
 
     // parse files
     Parser parser(directory, chromosomes);
@@ -135,7 +140,7 @@ int main(int argc, char* argv[]) {
     //     std::cout << std::endl;
     // }
     // get expressed regions
-    averager.find_ERs(0.25, 5);
+    averager.find_ERs(coverage_threshold, position_tolerance);
     //std::cout << averager.expressed_regions.size() << std::endl;
     // std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
     // std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;

@@ -48,23 +48,24 @@ bool Integrator::sj_too_far_back(const uint64_t most_recent_er_end, const uint64
 void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::map<std::string, std::vector<uint64_t>>& mm_chrom_sj, const std::vector<SJRow>& rr_all_sj)
 {
     // print all splice junctions in chromosome 1
-    std::cout << "--TEST SJ--" << std::endl;
-    for (auto& cov : mm_chrom_sj.at("chr1"))
-    {
-        std::cout << cov << ", " << rr_all_sj.at(cov - 1) << std::endl;
-    }
-    std::cout << "--TEST SJ--" << std::endl;
-
-    // print all ERs in chromosome 1
-    std::cout << "--TEST ERs--" << std::endl;
-    for (auto& er : expressed_regions.at("chr1"))
-    {
-        er.print();
-    }
-    std::cout << "--TEST ERs--" << std::endl;
+    // std::cout << "--TEST SJ--" << std::endl;
+    // for (auto& cov : mm_chrom_sj.at("chr1"))
+    // {
+    //     std::cout << cov << ", " << rr_all_sj.at(cov - 1) << std::endl;
+    // }
+    // std::cout << "--TEST SJ--" << std::endl;
+    //
+    // // print all ERs in chromosome 1
+    // std::cout << "--TEST ERs--" << std::endl;
+    // for (auto& er : expressed_regions.at("chr1"))
+    // {
+    //     er.print();
+    // }
+    // std::cout << "--TEST ERs--" << std::endl;
     // iterate over chromosomes and sj_ids -> sjs.first = chrom, sjs.second = vector<sj_id>
     for (auto& sjs : mm_chrom_sj)
     {
+        std::cout << "[INFO] Stitching chromosome " << sjs.first << std::endl;
         std::string chrom = sjs.first;
         StitchedER er1 = StitchedER(expressed_regions.at(chrom).at(0), 0); // define the first StitchedER, currently consisting of 1 ER
         stitched_ERs.push_back(er1);
@@ -179,24 +180,24 @@ void Integrator::write_to_gtf(const std::string& output_path)
 
         gtf_row.change_feature("transcript", i + 1, 0);
         out << gtf_row << std::endl;
-        std::cout << "gtf coords: " << gtf_row.start << " " << gtf_row.end << std::endl;
-        std::cout << "stitched er coords: " << stitched_ERs[i].start << " " << stitched_ERs[i].end << std::endl;
-        for (auto x : stitched_ERs[i].all_coverages)
-        {
-            std::cout << x.first << ", " << x.second << std::endl;
-        }
+        // std::cout << "gtf coords: " << gtf_row.start << " " << gtf_row.end << std::endl;
+        // std::cout << "stitched er coords: " << stitched_ERs[i].start << " " << stitched_ERs[i].end << std::endl;
+        // for (auto x : stitched_ERs[i].all_coverages)
+        // {
+        //     std::cout << x.first << ", " << x.second << std::endl;
+        // }
 
-        for (auto x : stitched_ERs[i].er_ids)
-        {
-            std::cout << x << std::endl;
-        }
+        // for (auto x : stitched_ERs[i].er_ids)
+        // {
+        //     std::cout << x << std::endl;
+        // }
         int exon_nr = 1;
         // add the ERs within the stitched_er
         for (unsigned int k = 0; k < stitched_ERs[i].er_ids.size(); ++k)
         {
             if (stitched_ERs[i].er_ids.at(k) != -1){
                 gtf_row.change_feature("exon", i + 1, exon_nr);
-                std::cout  << "start = " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
+                //std::cout  << "start = " << gtf_row.start << ", length = " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
                 // need to use the SJ length as well
                 gtf_row.end = gtf_row.start + stitched_ERs.at(i).all_coverages.at(k).first; // start + length = end
                 gtf_row.score = stitched_ERs.at(i).all_coverages.at(k).second; // use the per-exon average coverage here instead of the overall coverage
@@ -208,7 +209,7 @@ void Integrator::write_to_gtf(const std::string& output_path)
             else
             {
                 gtf_row.start += stitched_ERs.at(i).all_coverages.at(k).first; // add length of the SJ
-                std::cout << "added sj length: " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
+                //std::cout << "added sj length: " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
             }
         }
 

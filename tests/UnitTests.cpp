@@ -286,15 +286,45 @@ TEST(SpliceTestChromOneAndTwo, BothChrHaveMatchingSJs)
 
 }
 
-TEST(Parser, TestFullWithDummyData)
+// TEST(Parser, TestFullWithDummyData)
+// {
+//     // parse files
+//     std::string directory = "../data/test_exon_skipping";
+//
+//     int position_tolerance = 5;
+//     double coverage_tolerance = 0.1;
+//
+//     // parse files
+//     Parser parser = Parser(directory, {});
+//     parser.search_directory();
+//
+//     // get mean coverage vector
+//     Averager averager;
+//     averager.compute_mean_coverage(parser.all_per_base_coverages);
+//
+//     // get expressed regions
+//     averager.find_ERs(0.25, 5);
+//
+//     // use splice junctions to stitch together expressed regions
+//     Integrator integrator = Integrator(coverage_tolerance, position_tolerance);
+//     integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
+//
+//     // convert to GTF format
+//     std::string output_path = "../data/output.gtf";
+//     integrator.write_to_gtf(output_path);
+// }
+
+TEST(Parser, TestWrongChromosomeOrder)
 {
     // parse files
-    std::string directory = "../data/test_exon_skipping";
+    std::string directory = "../../tests/test_data";
+
     int position_tolerance = 5;
     double coverage_tolerance = 0.1;
-
+    double coverage_threshold = 0.25;
+    std::vector<std::string> chromosomes = {"chr2", "chr1"}; // intentionally wrong order
     // parse files
-    Parser parser = Parser(directory, {});
+    Parser parser = Parser(directory, chromosomes);
     parser.search_directory();
 
     // get mean coverage vector
@@ -302,13 +332,13 @@ TEST(Parser, TestFullWithDummyData)
     averager.compute_mean_coverage(parser.all_per_base_coverages);
 
     // get expressed regions
-    averager.find_ERs(0.25, 5);
+    averager.find_ERs(coverage_threshold, position_tolerance);
 
     // use splice junctions to stitch together expressed regions
     Integrator integrator = Integrator(coverage_tolerance, position_tolerance);
     integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
 
     // convert to GTF format
-    std::string output_path = "../data/output.gtf";
+    std::string output_path = "../../tests/gtfs/parser_test2.gtf";
     integrator.write_to_gtf(output_path);
 }

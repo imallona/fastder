@@ -2,6 +2,6 @@
 
 for i in *.bw
 do
- ../../utilities/bigWigToBedGraph $i ${i/%bw/bedGraph}
+ /home/martinalavanya/Documents/ETH/mls_semesterprojekt/kentutils/bigWigToBedGraph $i ${i/%bw/bedGraph}
 done
 

@@ -110,7 +110,7 @@ void Averager::find_ERs(double threshold, int min_length)//, std::vector<std::st
                         double current_avg = current_sum / (i - start);
                         //++count;
                         assert(count == i - start);
-                        std::cout << "count: " << count << ", len = " << i - start << std::endl;
+                        //std::cout << "count: " << count << ", len = " << i - start << std::endl;
                         BedGraphRow expressed_region = BedGraphRow(chrom, start, i, current_avg);
 
                         //expressed_region.print();
