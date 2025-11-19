@@ -60,7 +60,9 @@ whereas the green classes are wrappers for the three main functional stages of `
 ![UML Diagram of fastder](assets/UML.png)
 
 ### Sequence Diagram
+The following sequence diagram provides an abstracted overview of the main stages of `fastder`.
 
+![Sequence Diagram of fastder](assets/Sequence_Diagram_Main.png)
 ## Usage
 
 `fastder` can currently take only one RR and MM file as an input. Thus, users directly working with
