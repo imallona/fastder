@@ -6,24 +6,17 @@ The tool aims to reconstruct genes prior to splicing in an annotation-agnostic a
 `fastder` takes genome-wide coverage bigWig files and splice junction coordinates as an input. The tool averages across samples and performs thresholding to identify 
 consecutive regions with above-threshold expression. Following this, `fastder` attempts to stitch together expressed regions (ERs)
 by searching for splice junction coordinates that overlap with the start and end position of these expressed regions. 
----
+
 
 ## Installation
 
 ---
 
 ### Recount3 Background
-`recount3` provides uniformly processed RNA-seq data
-for over 8'000 human and over 10'000 mouse studies. Each study consist of multiple _per-sample_ coverage bigWig files and one set of *per-study* splice junction coordinate files amongst others.
+`recount3` provides RNA-seq data for over 8'000 human and over 10'000 mouse studies. Each study consist of multiple _per-sample_ 
+coverage bigWig files and one set of *per-study* splice junction coordinate files amongst others.
 These datasets can be downloaded from their [online platform](https://jhubiostatistics.shinyapps.io/recount3-study-explorer/). 
 Thus, the user can either provide data from one of the existing studies or run the `recount3` pipeline with new RNA-seq data.
-
-
-
-
-## Pipeline
-
-`fastder` takes is very closely coupled to the output files provided by `recount3`. 
 
 
 ## Input data
@@ -93,11 +86,11 @@ Optional inputs:
                                                 Default: all (chr1-chr22, chrX)
                                                 Example: --chr chr1 chr2 chr3
                                                 
-   --length-threshold <float>                Minimum length [#bp] required for a region to qualify as an expressed region (ER).
+   --length-threshold <float>                   Minimum length [#bp] required for a region to qualify as an expressed region (ER).
                                                 Default: 5 bp
                                                 Example: --coverage-threshold 5
                                                 
-   --coverage-threshold <float>              Minimum coverage [CPM] required for a region to qualify as an ER.
+   --coverage-threshold <float>                 Minimum coverage [CPM] required for a region to qualify as an ER.
                                                 Normalized in-place by library size.
                                                 Default: 0.25 CPM
                                                 Example: --coverage-threshold 0.25
@@ -125,8 +118,6 @@ Example:
 
 
 ## License
-
----
 
 GPLv3
 
