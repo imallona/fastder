@@ -16,6 +16,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> chromosomes = {"chr21"}; // "chr1", "chr9",
     // default values (if not provided by user)
     int position_tolerance = 5;
+    int length_threshold = 5;
     double coverage_tolerance = 0.1;
     double coverage_threshold = 0.25;
     std::string directory  = "../simulated_data/SimulatedDataMLS"; //../data";//"
@@ -69,17 +70,20 @@ int main(int argc, char* argv[]) {
             --i;
 
         }
-        else if (arg == "--pos-tol")
+        else if (arg == "--position-tolerance")
         {
             position_tolerance = atoi(argv[++i]);
         }
-
-        else if (arg == "--cov-thr")
+        else if (arg == "--length-threshold")
+        {
+            length_threshold = atoi(argv[++i]);
+        }
+        else if (arg == "--coverage-threshold")
         {
             coverage_threshold = std::stod(argv[++i]);
         }
 
-        else if (arg == "--cov-tol")
+        else if (arg == "--coverage-tolerance")
         {
             coverage_tolerance = std::stod(argv[++i]);
         }
@@ -140,7 +144,7 @@ int main(int argc, char* argv[]) {
     //     std::cout << std::endl;
     // }
     // get expressed regions
-    averager.find_ERs(coverage_threshold, position_tolerance);
+    averager.find_ERs(coverage_threshold, length_threshold);
     //std::cout << averager.expressed_regions.size() << std::endl;
     // std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
     // std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;
