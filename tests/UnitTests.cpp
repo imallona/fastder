@@ -320,6 +320,7 @@ TEST(Parser, TestWrongChromosomeOrder)
     std::string directory = "../../tests/test_data";
 
     int position_tolerance = 5;
+    int length_threshold = 5;
     double coverage_tolerance = 0.1;
     double coverage_threshold = 0.25;
     std::vector<std::string> chromosomes = {"chr2", "chr1"}; // intentionally wrong order
@@ -332,7 +333,7 @@ TEST(Parser, TestWrongChromosomeOrder)
     averager.compute_mean_coverage(parser.all_per_base_coverages);
 
     // get expressed regions
-    averager.find_ERs(coverage_threshold, position_tolerance);
+    averager.find_ERs(coverage_threshold, length_threshold);
 
     // use splice junctions to stitch together expressed regions
     Integrator integrator = Integrator(coverage_tolerance, position_tolerance);

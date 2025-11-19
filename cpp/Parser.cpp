@@ -17,8 +17,8 @@
 #include <filesystem>
 
 // constructor
-Parser::Parser(std::string _path, std::vector<std::string> chromosomes_) {
-    path = _path;
+Parser::Parser(std::string path_, std::vector<std::string> chromosomes_) {
+    path = path_;
     // default: use all chromosomes
     if (chromosomes_.empty())
     {
@@ -207,7 +207,7 @@ void Parser::read_mm(std::string filename) {
             // NEW: cumulative counts of a sj_id across all samples in the input
 
             // find the rail_id based on the mm_id --> only add sj_id if the mm_id is part of the samples
-            auto it = std::find_if(rail_id_to_mm_id.begin(), rail_id_to_mm_id.end(), [&] (const auto& p)
+            auto it = std::find_if(rail_id_to_mm_sample_id.begin(), rail_id_to_mm_sample_id.end(), [&] (const auto& p)
             {
                 return p.second == mm_id;
             });
@@ -215,7 +215,7 @@ void Parser::read_mm(std::string filename) {
             // add count if the mm was found and if chr is in bedgraph
             //std::cout << rr_all_sj[sj_id].chrom << " for splice junction " << sj_id << std::endl;
 
-            if (it != rail_id_to_mm_id.end() && this->chr_permitted(rr_all_sj[sj_id - 1].chrom)) // rail_id_to_mm_id has <rail_id, mm_id> mapping
+            if (it != rail_id_to_mm_sample_id.end() && this->chr_permitted(rr_all_sj[sj_id - 1].chrom)) // rail_id_to_mm_id has <rail_id, mm_id> mapping
             {
                 // store vector of sj_ids for each chromosome
                 mm_chrom_sj[rr_all_sj[sj_id - 1].chrom].push_back(sj_id); // this creates the binding if it doesn't exist yet, initializes it to 0 and then increases it by count
@@ -293,7 +293,7 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
             unsigned int mm_id = std::distance(rail_id_to_ext_id.begin(), it) + 1; // std::distance counts the steps between two iterators --> mm_id is 1 too small, so add 1
             unsigned int rail_id = it->first;
 
-            rail_id_to_mm_id.push_back(std::make_pair(rail_id, mm_id));
+            rail_id_to_mm_sample_id.push_back(std::make_pair(rail_id, mm_id));
         }
         else
         {
@@ -352,7 +352,7 @@ void Parser::search_directory() {
 
     // fill up rail_id_to_mm_id mapping for all rail_ids provided by the user
     fill_up(bedgraph_files);
-    std::cout << "nr of samples provided by user: " << rail_id_to_mm_id.size() << std::endl;
+    std::cout << "nr of samples provided by user: " << rail_id_to_mm_sample_id.size() << std::endl;
 
     // now parse all other files
     for (const auto & entry : std::filesystem::directory_iterator(path))

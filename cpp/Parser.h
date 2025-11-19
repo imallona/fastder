@@ -14,7 +14,7 @@ namespace fs = std::filesystem;
 
 class Parser {
 public:
-    Parser(std::string _path, std::vector<std::string> chromosomes_);
+    Parser(std::string path_, std::vector<std::string> chromosomes_);
     void search_directory();
     // Cache MM file because it takes so long to parse
     void save_mm_cache_(const std::filesystem::path& cache) const;
@@ -45,7 +45,7 @@ public:
 
     std::vector<std::pair<unsigned int, std::string>> rail_id_to_ext_id; // <rail_id, external_id> for all samples in the dataset
 
-    std::vector<std::pair<unsigned int, unsigned int>> rail_id_to_mm_id; // <rail_id, mm_id> mapping
+    std::vector<std::pair<unsigned int, unsigned int>> rail_id_to_mm_sample_id; // <rail_id, mm_id> mapping
 
 
     const std::vector<std::string> permitted_chromosomes =  {

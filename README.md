@@ -1,7 +1,7 @@
-# _FASTDER_ - Fast Detection of Expressed Regions
+# _fastder_ - Fast Detection of Expressed Regions
 `fastder` is a C++ based tool for detecting expressed regions in RNA-seq data. 
 It is intended to build on the `recount3` [resource](https://rna.recount.bio/), which consists of over 750'000 uniformly processed RNA-seq samples across different mouse and human studies.
-The tool aims to reconstruct genes prior to splicing in an annotation-agnostic approach.
+The tool aims to reconstruct expressed genes prior to splicing in an annotation-agnostic approach.
 
 `fastder` takes genome-wide coverage bigWig files and splice junction coordinates as an input. The tool averages across samples and performs thresholding to identify 
 consecutive regions with above-threshold expression. Following this, `fastder` attempts to stitch together expressed regions (ERs)
@@ -9,8 +9,6 @@ by searching for splice junction coordinates that overlap with the start and end
 
 
 ## Installation
-
----
 
 ### Recount3 Background
 `recount3` provides RNA-seq data for over 8'000 human and over 10'000 mouse studies. Each study consist of multiple _per-sample_ 
@@ -20,8 +18,6 @@ Thus, the user can either provide data from one of the existing studies or run t
 
 
 ## Input data
-
----
 
 `fastder` takes four different input files
 1. At least one genome-wide **coverage bigWig files**, one file per sample
@@ -48,6 +44,22 @@ A brief summary of the relevant steps in the `Monorail` system (used to create `
 4. Aggregate SJ.out.tab into a
    1. _MM file_
    2. _RR file_
+
+## Code Structure
+
+### Relational Database Model
+The following image provides an overview of the tables and objects used in `fastder`. The _File suffix indicates that the table is one of the input files. 
+All other tables are objects created by the `Parser` class to map between the IDs used by the different tables.
+
+![Relational Database Model in fastder](assets/DBML.png)
+
+### UML Diagram
+`fastder` is comprised of 7 different classes. The blue classes are used to define custom data types and associated methods, 
+whereas the green classes are wrappers for the three main functional stages of `fastder`.
+
+![UML Diagram of fastder](assets/UML.png)
+
+### Sequence Diagram
 
 ## Usage
 
@@ -112,6 +124,7 @@ Example:
    --dir ../../data/input \
    --chr chr1 chr2 \
    --position-tolerance 5 \
+   --length-threshold 5 \
    --coverage-threshold 0.25 \
    --coverage-tolerance 0.1
 ```
@@ -122,8 +135,6 @@ Example:
 GPLv3
 
 ## Contact
-
----
 
 martina.lavanya@gmail.com
 
