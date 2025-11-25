@@ -84,14 +84,14 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                 StitchedER& current_stitched_er = stitched_ERs.back(); // this is one expressed region right now
 
                 // skip to SJ with coordinates that line up with the most recent ER
-                std::cout << "upstream ER: " << expressed_regions[chrom][current_stitched_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[chrom][current_stitched_er.er_ids.back()].start << "\t" << expressed_regions[chrom][current_stitched_er.er_ids.back()].end << ", (len) " << expressed_regions[chrom][current_stitched_er.er_ids.back()].end -  expressed_regions[chrom][current_stitched_er.er_ids.back()].start <<std::endl;
-                std::cout << "downstream ER: " << expressed_region.chrom << ", (pos) " << expressed_region.start << "\t" << expressed_region.end << ", (len) " <<  expressed_region.end  - expressed_region.start << std::endl;
-                std::cout << "current SJ = " << rr_all_sj[*current_sj_id - 1].start << " <--> " <<  rr_all_sj[*current_sj_id - 1].end << std::endl;
-                while (current_sj_id != sjs.second.end()
+                // std::cout << "upstream ER: " << expressed_regions[chrom][current_stitched_er.er_ids.back()].chrom << ", (pos) " << expressed_regions[chrom][current_stitched_er.er_ids.back()].start << "\t" << expressed_regions[chrom][current_stitched_er.er_ids.back()].end << ", (len) " << expressed_regions[chrom][current_stitched_er.er_ids.back()].end -  expressed_regions[chrom][current_stitched_er.er_ids.back()].start <<std::endl;
+                // std::cout << "downstream ER: " << expressed_region.chrom << ", (pos) " << expressed_region.start << "\t" << expressed_region.end << ", (len) " <<  expressed_region.end  - expressed_region.start << std::endl;
+                // std::cout << "current SJ = " << rr_all_sj[*current_sj_id - 1].start << " <--> " <<  rr_all_sj[*current_sj_id - 1].end << std::endl;
+                // while (current_sj_id != sjs.second.end()
                     && (current_stitched_er.end > rr_all_sj[*current_sj_id - 1].start && !within_threshold(current_stitched_er.end, rr_all_sj[*current_sj_id - 1].start))
                     && rr_all_sj[*current_sj_id - 1].chrom == chrom) //& !within_threshold(most_recent_er.end, rr_all_sj[*current_sj_id - 1].start)
                 {
-                    std::cout << "current SJ = " << rr_all_sj[*current_sj_id - 1].start << " <--> " <<  rr_all_sj[*current_sj_id - 1].end << std::endl;
+                    //std::cout << "current SJ = " << rr_all_sj[*current_sj_id - 1].start << " <--> " <<  rr_all_sj[*current_sj_id - 1].end << std::endl;
                     ++current_sj_id;
 
                 }
@@ -105,7 +105,7 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                 if (is_similar(current_stitched_er, expressed_region, rr_all_sj[*current_sj_id - 1]))
                 {
 
-                    std::cout << "[JUNCTION] " << expressed_regions[chrom][current_stitched_er.er_ids.back()].end << " <--> " << rr_all_sj[*current_sj_id - 1].start << ", " << rr_all_sj[*current_sj_id - 1].end<< " <--> " <<  expressed_region.start << std::endl;
+                    //std::cout << "[JUNCTION] " << expressed_regions[chrom][current_stitched_er.er_ids.back()].end << " <--> " << rr_all_sj[*current_sj_id - 1].start << ", " << rr_all_sj[*current_sj_id - 1].end<< " <--> " <<  expressed_region.start << std::endl;
 
                     //expressed_region.print();
                     // the chromosome that

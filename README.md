@@ -72,9 +72,9 @@ The following sequence diagram provides an abstracted overview of the main stage
 - `fastder` allows users to optionally specify which chromosomes they wish to analyze. The flag `--chr <chr1>` means 
 that the tool will only output expressed regions on chromosome 1, and will ignore all coverage and splice junction information from other chromosomes). 
 - `fastder` allows optionally specifying four different thresholds:
-  -  `--coverage-threshold 0.25` describes the coverage threshold of an expressed region (ER). 
+  -  `--min-coverage 0.25` describes the coverage threshold of an expressed region (ER). 
   A consecutive base-pair position must have at least 0.25 CPM coverage to be added to en ER.
-  - `--length-threshold 5` describes the minimum length (in bp) that an ER must have. For instance, three consecutive base pairs with coverage > 0.25 CPM will be ignored if the length threshold is set to 5 bp.
+  - `--min-length 5` describes the minimum length (in bp) that an ER must have. For instance, three consecutive base pairs with coverage > 0.25 CPM will be ignored if the min length is set to 5 bp.
   - `--position-tolerance 5` describes the maximum permitted offset of the end position of an exon and the starting position of a splice junction. If this tolerance is set to 5,
   an ER with end position = 1000 bp and a splice junction with start position = 1005 bp will be stitched together (if the coverage and end junction match).
   - `--coverage-tolerance 0.1` describes the maximum permitted coverage deviation between two ER that are separated by a spliced region. For a coverage tolerance of 0.1, 
@@ -84,7 +84,7 @@ Usage:
    fastder \
       --dir <path> ... \
       [--chr <chr1> <chr2> ...] \
-      [--coverage-threshold <float>] \
+      [--min-coverage <float>] \
       [--position-tolerance <int>] \
       [--coverage-tolerance <float>] \
       [--help]
@@ -100,14 +100,14 @@ Optional inputs:
                                                 Default: all (chr1-chr22, chrX)
                                                 Example: --chr chr1 chr2 chr3
                                                 
-   --length-threshold <float>                   Minimum length [#bp] required for a region to qualify as an expressed region (ER).
+   --min-length <float>                         Minimum length [#bp] required for a region to qualify as an expressed region (ER).
                                                 Default: 5 bp
-                                                Example: --coverage-threshold 5
+                                                Example: --min-length 5
                                                 
-   --coverage-threshold <float>                 Minimum coverage [CPM] required for a region to qualify as an ER.
+   --min-coverage <float>                       Minimum coverage [CPM] required for a region to qualify as an ER.
                                                 Normalized in-place by library size.
                                                 Default: 0.25 CPM
-                                                Example: --coverage-threshold 0.25
+                                                Example: --min-coverage 0.25
    
    --position-tolerance <int>                   Maximum allowed positional deviation between splice junction and ER coordinates [bp].
                                                 Default: 5 bp
@@ -126,8 +126,8 @@ Example:
    --dir ../../data/input \
    --chr chr1 chr2 \
    --position-tolerance 5 \
-   --length-threshold 5 \
-   --coverage-threshold 0.25 \
+   --min-length 5 \
+   --min-coverage 0.25 \
    --coverage-tolerance 0.1
 ```
 

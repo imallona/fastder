@@ -16,9 +16,9 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> chromosomes; // "chr1", "chr9",
     // default values (if not provided by user)
     int position_tolerance = 5;
-    int length_threshold = 5;
+    int min_length = 5;
     double coverage_tolerance = 0.1;
-    double coverage_threshold = 0.25;
+    double min_coverage = 0.25;
     std::string directory  = "";
     bool directory_provided = false;
 
@@ -39,8 +39,8 @@ int main(int argc, char* argv[]) {
             << "                               Example: --dir ../../data/test_exon_skipping \n\n"
             << "  --chr <chr1> <chr2> ...      List of chromosomes to process. Default = ALL\n"
             << "                               Example: --chr chr1 chr2 chr3\n\n"
-            << "  --coverage-threshold <float> Coverage threshold to qualify as an expressed region (ER), in [CPM]. Normalization is done in-place by library size. Default = 0.25 CPM.\n"
-            << "                               Example: --coverage-threshold 0.25\n\n"
+            << "  --min-coverage <float> Coverage threshold to qualify as an expressed region (ER), in [CPM]. Normalization is done in-place by library size. Default = 0.25 CPM.\n"
+            << "                               Example: --min-coverage 0.25\n\n"
             << "  --position-tolerance <int>   Maximum permitted position deviation of splice junction and ER coordinates, in [bp]. Default = 5 bp\n"
             << "                               Example: --position-tolerance 5\n\n"
             << "  --coverage-tolerance <float> Permitted coverage deviation between stitched ERs, as a proportion (e.g. 0.1 = 10 %). Default = 0.1\n"
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
             << "  --help                       Show this help message.\n\n"
             << "Example:\n"
             << "  ./fastder  --dir ../../data/test_exon_skipping --chr chr1 chr2 --position-tolerance 5 "
-             "--coverage-threshold 0.25 --coverage-tolerance 0.1\n"
+             "--min-coverage 0.25 --coverage-tolerance 0.1\n"
             << std::endl;
 
     // parse command-line arguments
@@ -73,13 +73,13 @@ int main(int argc, char* argv[]) {
         {
             position_tolerance = atoi(argv[++i]);
         }
-        else if (arg == "--length-threshold")
+        else if (arg == "--min-length")
         {
-            length_threshold = atoi(argv[++i]);
+            min_length = atoi(argv[++i]);
         }
-        else if (arg == "--coverage-threshold")
+        else if (arg == "--min-coverage")
         {
-            coverage_threshold = std::stod(argv[++i]);
+            min_coverage = std::stod(argv[++i]);
         }
 
         else if (arg == "--coverage-tolerance")
@@ -100,8 +100,8 @@ int main(int argc, char* argv[]) {
                         << "                               Example: --dir ../../data/test_exon_skipping \n\n"
                         << "  --chr <chr1> <chr2> ...      List of chromosomes to process. Default = ALL\n"
                         << "                               Example: --chr chr1 chr2 chr3\n\n"
-                        << "  --coverage-threshold <float> Coverage threshold to qualify as an expressed region (ER), in [CPM]. Normalization is done in-place by library size. Default = 0.25 CPM.\n"
-                        << "                               Example: --coverage-threshold 0.25\n\n"
+                        << "  --min-coverage <float> Coverage threshold to qualify as an expressed region (ER), in [CPM]. Normalization is done in-place by library size. Default = 0.25 CPM.\n"
+                        << "                               Example: --min-coverage 0.25\n\n"
                         << "  --position-tolerance <int>   Maximum permitted position deviation of splice junction and ER coordinates, in [bp]. Default = 5 bp\n"
                         << "                               Example: --position-tolerance 5\n\n"
                         << "  --coverage-tolerance <float> Permitted coverage deviation within a stitched ER, as a proportion (e.g. 0.1 = 10 %). Default = 0.1\n"
@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
                         << "  --help                       Show this help message.\n\n"
                         << "Example:\n"
                         << "  ./fastder --chr chr1 chr2 --position-tolerance 5 "
-                         "--coverage-threshold 0.25 --coverage-tolerance 0.1\n"
+                         "--min-coverage 0.25 --coverage-tolerance 0.1\n"
                         << std::endl;
 
         }
@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) {
     //     std::cout << std::endl;
     // }
     // get expressed regions
-    averager.find_ERs(coverage_threshold, length_threshold);
+    averager.find_ERs(min_coverage, min_length);
     //std::cout << averager.expressed_regions.size() << std::endl;
     // std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
     // std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;
@@ -195,7 +195,7 @@ int main(int argc, char* argv[]) {
     // convert to GTF format
 
     // file name: FASTDER_RESULT_POS_5_COV_THR_0.1_COV_
-    std::string output_path = directory + "FASTDER_RESULT_POS_" + std::to_string(position_tolerance) + "_COV_THR_" + std::to_string(coverage_threshold) + "_COV_TOL_" + std::to_string(coverage_tolerance) + "_LENGTH_THRESHOLD_" + std::to_string(length_threshold) + ".gtf";
+    std::string output_path = directory + "FASTDER_RESULT_POS_TOL_" + std::to_string(position_tolerance) + "_COV_THR_" + std::to_string(min_coverage) + "_COV_TOL_" + std::to_string(coverage_tolerance) + "_MIN_LENGTH_" + std::to_string(min_length) + ".gtf";
     integrator.write_to_gtf(output_path);
 
 
