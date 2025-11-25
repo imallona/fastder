@@ -343,3 +343,17 @@ TEST(Parser, TestWrongChromosomeOrder)
     std::string output_path = "../../tests/gtfs/parser_test2.gtf";
     integrator.write_to_gtf(output_path);
 }
+
+TEST(Parser, DateFormatInGTF)
+{
+    // get today's date
+    auto now = std::chrono::system_clock::now();
+    std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(now)}; //formatted as YYYY-MM-DD
+    std::string date =
+    std::to_string(int(ymd.year())) + "-" +
+    std::to_string(unsigned(ymd.month())) + "-" +
+    std::to_string(unsigned(ymd.day()));
+
+    std::cout << date;
+
+}

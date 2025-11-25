@@ -163,6 +163,12 @@ void Integrator::write_to_gtf(const std::string& output_path)
     auto now = std::chrono::system_clock::now();
     std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(now)}; //formatted as YYYY-MM-DD
 
+    // convert to string to avoid << error
+    std::string date =
+        std::to_string(int(ymd.year())) + "-" +
+        std::to_string(unsigned(ymd.month())) + "-" +
+        std::to_string(unsigned(ymd.day()));
+
     // write headers
     out << "##description: expressed region annotation of genome based on bigwig and MM / RR splice junction information." << std::endl;
     out << "##provider: FASTDER" << std::endl;
