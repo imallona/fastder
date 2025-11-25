@@ -4,6 +4,8 @@
 
 #include <cassert>
 #include <Integrator.h>
+#include <fmt/core.h>
+#include <fmt/chrono.h>
 
 // constructor
 Integrator::Integrator(double coverage_tolerance_, int position_tolerance_)
@@ -161,16 +163,14 @@ void Integrator::write_to_gtf(const std::string& output_path)
     }
     // get today's date
     auto now = std::chrono::system_clock::now();
-    std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(now)};
-    //format as YYYY-MM-DD
-    std::string date = std::format("{:%Y-%m-%d}", ymd);
+    std::chrono::year_month_day ymd{std::chrono::floor<std::chrono::days>(now)}; //formatted as YYYY-MM-DD
 
     // write headers
     out << "##description: expressed region annotation of genome based on bigwig and MM / RR splice junction information." << std::endl;
     out << "##provider: FASTDER" << std::endl;
     out << "##contact: marlehmann@ethz.ch" << std::endl;
     out << "##format: gtf" << std::endl;
-    out << "##date: " << date << std::endl;
+    out << "##date: " << ymd << std::endl;
 
     for (unsigned int i = 0; i < this->stitched_ERs.size(); ++i)
     {
