@@ -4,8 +4,6 @@
 
 #include <cassert>
 #include <Integrator.h>
-#include <fmt/core.h>
-#include <fmt/chrono.h>
 
 // constructor
 Integrator::Integrator(double coverage_tolerance_, int position_tolerance_)
