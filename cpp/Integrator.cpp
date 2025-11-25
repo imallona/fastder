@@ -174,7 +174,7 @@ void Integrator::write_to_gtf(const std::string& output_path)
     out << "##provider: FASTDER" << std::endl;
     out << "##contact: marlehmann@ethz.ch" << std::endl;
     out << "##format: gtf" << std::endl;
-    out << "##date: " << ymd << std::endl;
+    out << "##date: " << date << std::endl;
 
     for (unsigned int i = 0; i < this->stitched_ERs.size(); ++i)
     {

@@ -13,14 +13,13 @@
 
 int main(int argc, char* argv[]) {
 
-    std::vector<std::string> chromosomes = {"chr21"}; // "chr1", "chr9",
+    std::vector<std::string> chromosomes; // "chr1", "chr9",
     // default values (if not provided by user)
     int position_tolerance = 5;
     int length_threshold = 5;
     double coverage_tolerance = 0.1;
     double coverage_threshold = 0.25;
-    std::string directory  = "../simulated_data/SimulatedDataMLS"; //../data";//"
-
+    std::string directory  = "";
     bool directory_provided = false;
 
     std::cout
@@ -194,7 +193,7 @@ int main(int argc, char* argv[]) {
 
 
     // convert to GTF format
-    std::string output_path = "../data/output.gtf";
+    std::string output_path = directory + "fastder_result.gtf";
     integrator.write_to_gtf(output_path);
 
 
