@@ -193,7 +193,9 @@ int main(int argc, char* argv[]) {
 
 
     // convert to GTF format
-    std::string output_path = directory + "fastder_result.gtf";
+
+    // file name: FASTDER_RESULT_POS_5_COV_THR_0.1_COV_
+    std::string output_path = directory + "FASTDER_RESULT_POS_" + std::to_string(position_tolerance) + "_COV_THR_" + std::to_string(coverage_threshold) + "_COV_TOL_" + std::to_string(coverage_tolerance) + "_LENGTH_THRESHOLD_" + std::to_string(length_threshold) + ".gtf";
     integrator.write_to_gtf(output_path);
 
 

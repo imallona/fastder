@@ -1,0 +1,19 @@
+##description: expressed region annotation of genome based on bigwig and MM / RR splice junction information.
+##provider: FASTDER
+##contact: marlehmann@ethz.ch
+##format: gtf
+##date: 2025-11-25
+1	fastder	gene	10000	10500	225.982	.	.	gene_id "gene1"; gene_name "faster_gene1";
+1	fastder	transcript	10000	10500	225.982	.	.	gene_id "gene1"; transcript_id "tx1";
+1	fastder	exon	10000	10500	225.982	.	.	gene_id "gene1"; transcript_id "tx1"; exon_number "1";
+1	fastder	gene	11000	12500	216.566	.	.	gene_id "gene2"; gene_name "faster_gene2";
+1	fastder	transcript	11000	12500	216.566	.	.	gene_id "gene2"; transcript_id "tx2";
+1	fastder	exon	11000	12500	216.566	.	.	gene_id "gene2"; transcript_id "tx2"; exon_number "1";
+1	fastder	gene	12861	14540	183.631	.	.	gene_id "gene3"; gene_name "faster_gene3";
+1	fastder	transcript	12861	14540	183.631	.	.	gene_id "gene3"; transcript_id "tx3";
+1	fastder	exon	12861	12999	172.148	.	.	gene_id "gene3"; transcript_id "tx3"; exon_number "1";
+1	fastder	exon	14001	14540	186.572	.	.	gene_id "gene3"; transcript_id "tx3"; exon_number "2";
+2	fastder	gene	10000	12500	218.92	.	.	gene_id "gene4"; gene_name "faster_gene4";
+2	fastder	transcript	10000	12500	218.92	.	.	gene_id "gene4"; transcript_id "tx4";
+2	fastder	exon	10000	10500	225.982	.	.	gene_id "gene4"; transcript_id "tx4"; exon_number "1";
+2	fastder	exon	11000	12500	216.566	.	.	gene_id "gene4"; transcript_id "tx4"; exon_number "2";

@@ -364,9 +364,10 @@ TEST(Parser, TestWrongChromosomeOrder)
     }
 
     // convert to GTF format
-    std::string output_path = "../../tests/gtfs/parser_test2.gtf";
+    std::string output_path = "../../tests/gtfs/parser_test3.gtf";
     integrator.write_to_gtf(output_path);
 }
+
 
 TEST(Parser, DateFormatInGTF)
 {
