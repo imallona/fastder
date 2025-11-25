@@ -88,13 +88,14 @@ void Averager::find_ERs(double threshold, int min_length)//, std::vector<std::st
             std::vector<BedGraphRow> chrom_expressed_regions;
             for (unsigned int i = 0; i <= mean_coverage[chrom].size(); i++)
             {
-                if (i == mean_coverage[chrom].size())
+                // append the last expressed region if it's long enough
+                if (i == mean_coverage[chrom].size() && (i - start) > min_length)
                 {
+                    //TODO last ER can be inclusive or exclusive depending on mean_coverage[chrom][i] <= threshold, but this is currently not encoded
                     double current_avg = current_sum / (i - start);
                     BedGraphRow expressed_region = BedGraphRow(chrom, start, i, current_avg);
                     //expressed_region.print();
                     chrom_expressed_regions.push_back(expressed_region);
-
 
                     break; // leave loop!!
                 }
@@ -134,7 +135,7 @@ void Averager::find_ERs(double threshold, int min_length)//, std::vector<std::st
                 return chrom_expressed_regions;
             });
         }
-        // append the last expressed region
+
 
 
         //avoid using mutexes, just do single-threaded merge

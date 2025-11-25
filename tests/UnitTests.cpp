@@ -335,9 +335,33 @@ TEST(Parser, TestWrongChromosomeOrder)
     // get expressed regions
     averager.find_ERs(coverage_threshold, length_threshold);
 
+
     // use splice junctions to stitch together expressed regions
     Integrator integrator = Integrator(coverage_tolerance, position_tolerance);
     integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
+
+    // SUMMARY OF EXPRESSED REGIONS
+    for (auto& c : averager.expressed_regions)
+    {
+        std::cout << "expressed regions in chr " << c.first << " = " << c.second.size() << std::endl;
+        for (auto& er : c.second)
+        {
+            er.print();
+        }
+    }
+
+    // SUMMARY OF STITCHED EXPRESSED REGIONS
+    std::unordered_map<std::string, int> ser_counts;
+    for (auto& stitched_er : integrator.stitched_ERs)
+    {
+        ser_counts[stitched_er.chrom]++;
+        std::cout << stitched_er << std::endl;
+    }
+    for (auto& c : ser_counts)
+    {
+        std::cout << "stitched ERs in chr " << c.first << " = " << c.second << std::endl;
+
+    }
 
     // convert to GTF format
     std::string output_path = "../../tests/gtfs/parser_test2.gtf";
