@@ -25,14 +25,14 @@ void Averager::compute_mean_coverage(std::vector<std::unordered_map<std::string,
     std::unordered_map<std::string, std::future<std::vector<double>>> workers;
     // workers.reserve(all_per_base_coverages.size()); //pre-allocate space for workers
 
-    std::cout << "#samples = " << all_per_base_coverages.size() << ", #chromosomes = "<< all_per_base_coverages[0].size() << std::endl;
+    std::cout << "[INFO] Provided #samples = " << all_per_base_coverages.size() << ", #chromosomes = "<< all_per_base_coverages[0].size() << std::endl;
 
     // parallel iteration over chromosomes. pair.first = chromosome, pair.second = vector of per base coverages of that chromosome
     for (auto& item : all_per_base_coverages.at(0))
     {
         std::string chrom = item.first;
         workers[chrom] = std::async(std::launch::async, [&, chrom]{
-        std::cout << "COMPUTING MEAN FOR CHROMOSOME " << chrom << std::endl;
+        //std::cout << "COMPUTING MEAN FOR CHROMOSOME " << chrom << std::endl;
         std::vector<double> chrom_mean_vector;
         // iterate over values for each chromosome
         for (unsigned int i = 0; i < all_per_base_coverages[0][chrom].size(); i++)
@@ -57,7 +57,7 @@ void Averager::compute_mean_coverage(std::vector<std::unordered_map<std::string,
     {
         std::string chrom = pair.first;
         mean_coverage[chrom] = workers[chrom].get(); //get result
-        std::cout << "FINISHED MEAN COMPUTATION FOR " << chrom << " with #bp = " << all_per_base_coverages[0].at(chrom).size() << std::endl;
+        std::cout << "[INFO] Computed mean for " << chrom << " with #bp = " << all_per_base_coverages[0].at(chrom).size() << std::endl;
         assert(all_per_base_coverages[0].at(chrom).size() == mean_coverage[chrom].size());
     }
 

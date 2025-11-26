@@ -13,18 +13,18 @@
 
 int main(int argc, char* argv[]) {
 
-    std::vector<std::string> chromosomes; // "chr1", "chr9",
+    std::vector<std::string> chromosomes = {"chr19"}; // "chr1", "chr9",
     // default values (if not provided by user)
-    int position_tolerance = 5;
-    int min_length = 5;
-    double coverage_tolerance = 0.1;
-    double min_coverage = 0.25;
-    std::string directory  = "";
-    bool directory_provided = false;
+    int position_tolerance = 20; // [3,5,7,10]
+    int min_length = 10; //[5, 10]
+    double coverage_tolerance = 0.8; //[0.
+    double min_coverage = 0.05;
+    std::string directory  = "../data";
+    bool directory_provided = true;
 
     std::cout
     << "\n "
-    << "\t \t \t WELCOME TO \n"
+    << "\t \t \t \t \t\tWELCOME TO \n"
         <<
     "        _____ _    ____ _____ ____  _____ ____  \n"
     "       |  ___/ \\  / ___|_   _|  _ \\| ____|  _ \\ \n"
@@ -120,14 +120,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // if (!directory_provided)
-    // {
-    //     std::cout << "[ERROR] No working directory provided! Quitting...";
-    // }
-    for (auto chr : chromosomes)
+    if (!directory_provided)
     {
-        std::cout << chr << std::endl;
+        std::cout << "[ERROR] No working directory provided! Quitting...";
+        return 1;
     }
+    // for (auto chr : chromosomes)
+    // {
+    //     std::cout << chr << std::endl;
+    // }
 
     // parse files
     Parser parser(directory, chromosomes);
@@ -149,16 +150,16 @@ int main(int argc, char* argv[]) {
     // std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
     // std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;
 
-    for (int i = 0; i  < averager.expressed_regions.size(); ++i)
-    {
-        averager.expressed_regions.at(parser.chromosomes.at(0)).at(i).print();
-    }
-    std::cout << "*****************************" << std::endl;
-    std::cout << " nr of chromosomes: " << parser.mm_chrom_sj.size() << std::endl;
-    for (auto& chrom : parser.mm_chrom_sj)
-    {
-        std::cout << " chrom " << chrom.first << " : " << chrom.second.size() << std::endl;
-    }
+    // for (int i = 0; i  < averager.expressed_regions.size(); ++i)
+    // {
+    //     averager.expressed_regions.at(parser.chromosomes.at(0)).at(i).print();
+    // }
+    // std::cout << "*****************************" << std::endl;
+    // std::cout << " nr of chromosomes: " << parser.mm_chrom_sj.size() << std::endl;
+    // for (auto& chrom : parser.mm_chrom_sj)
+    // {
+    //     std::cout << " chrom " << chrom.first << " : " << chrom.second.size() << std::endl;
+    // }
 
     // use splice junctions to stitch together expressed regions
     Integrator integrator = Integrator(coverage_tolerance, position_tolerance);
@@ -167,18 +168,17 @@ int main(int argc, char* argv[]) {
     // std::cout << "stitched ER index" << "\t" << "(" <<  "length" <<"," << "average coverage" << ")" << std::endl;
     // std::cout << "stitched_er.across_er_coverage" << "\t" << "stitched_er.start" << "\t" << "stitched_er.end" << "\t" << "stitched_er.total_length" << std::endl;
 
-    std::cout << "number of stitched regions = "  << integrator.stitched_ERs.size() << std::endl;
 
     // SUMMARY OF SPLICE JUNCTIONS
     for (auto& c : parser.mm_chrom_sj)
     {
-        std::cout << "splice junctions in chr " << c.first << " = " << c.second.size() << std::endl;
+        std::cout << "[INFO] Splice Junctions in chr" << c.first << " : " << c.second.size() << std::endl;
     }
 
     // SUMMARY OF EXPRESSED REGIONS
     for (auto& c : averager.expressed_regions)
     {
-        std::cout << "expressed regions in chr " << c.first << " = " << c.second.size() << std::endl;
+        std::cout << "[INFO] Expressed Regions in chr" << c.first << " : " << c.second.size() << std::endl;
     }
 
     // SUMMARY OF STITCHED EXPRESSED REGIONS
@@ -187,16 +187,19 @@ int main(int argc, char* argv[]) {
     {
         ser_counts[stitched_er.chrom]++;
     }
+
+    std::cout << "[INFO] Total Stitched Regions: "  << integrator.stitched_ERs.size() << std::endl;
+
     for (auto& c : ser_counts)
     {
-        std::cout << "stitched ERs in chr " << c.first << " = " << c.second << std::endl;
+        std::cout << "[INFO] Stitched ERs in chr" << c.first << " : " << c.second << std::endl;
     }
 
 
     // convert to GTF format
 
     // file name: FASTDER_RESULT_POS_5_COV_THR_0.1_COV_
-    std::string output_path = directory + "FASTDER_RESULT_POS_TOL_" + std::to_string(position_tolerance) + "_COV_THR_" + std::to_string(min_coverage) + "_COV_TOL_" + std::to_string(coverage_tolerance) + "_MIN_LENGTH_" + std::to_string(min_length) + ".gtf";
+    std::string output_path = directory + "/FASTDER_RESULT_POS_TOL_" + std::to_string(position_tolerance) + "_MIN_COV_" + std::to_string(min_coverage) + "_COV_TOL_" + std::to_string(coverage_tolerance) + "_MIN_LENGTH_" + std::to_string(min_length) + ".gtf";
     integrator.write_to_gtf(output_path);
 
 

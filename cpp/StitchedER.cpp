@@ -46,7 +46,7 @@ void StitchedER::append(int er_id, unsigned int length, double coverage)
         total_length += length; // only count er length
     }
 
-    std::cout << "Adding length = " << length << " to position = " << end << std::endl ;
+    //std::cout << "Adding length = " << length << " to position = " << end << std::endl ;
     end += length; // count er_length and sj_length to get the correct end position
 
 

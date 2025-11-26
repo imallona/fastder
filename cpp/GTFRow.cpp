@@ -11,7 +11,7 @@
 GTFRow::GTFRow(const StitchedER& region, std::string ftr, unsigned int id)
 {
 
-    seqname = std::regex_replace(region.chrom, std::regex("^chr"), ""); //strip away chr from chr1, chrX etc.
+    seqname = region.chrom;//std::regex_replace(region.chrom, std::regex("^chr"), ""); //strip away chr from chr1, chrX etc.
     feature = ftr;
     score = region.across_er_coverage;
     start = region.start;
@@ -41,7 +41,7 @@ void GTFRow::change_feature(std::string ftr, unsigned int id, unsigned int exon_
     }
     else
     {
-        std::cout << "ERROR: UNKNOWN FEATURE";
+        std::cout << "[ERROR] unknown feature";
     }
 
     // add exon number only if it's an exon

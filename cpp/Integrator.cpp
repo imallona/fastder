@@ -137,7 +137,7 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
 
 
                 }
-                std::cout << "\n";
+                //std::cout << "\n";
 
 
             }
@@ -147,7 +147,7 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
                 stitched_ERs.push_back(StitchedER(expressed_region, i));
             }
         }
-        std::cout << "max_stitched_ers = " << max_stitched_ers<< std::endl;
+        std::cout << "[INFO] Longest stitched ER contains " << max_stitched_ers << " ERs" << std::endl;
     }
 }
 
@@ -156,7 +156,7 @@ void Integrator::write_to_gtf(const std::string& output_path)
 {
     std::ofstream out(output_path);
     if (!out.is_open()) {
-        std::cerr << "Error: could not open output file " << output_path << std::endl;
+        std::cerr << "[ERROR] could not open output file " << output_path << std::endl;
         return;
     }
     // get today's date
@@ -170,11 +170,11 @@ void Integrator::write_to_gtf(const std::string& output_path)
         std::to_string(unsigned(ymd.day()));
 
     // write headers
-    out << "##description: expressed region annotation of genome based on bigwig and MM / RR splice junction information." << std::endl;
-    out << "##provider: FASTDER" << std::endl;
-    out << "##contact: marlehmann@ethz.ch" << std::endl;
-    out << "##format: gtf" << std::endl;
-    out << "##date: " << date << std::endl;
+    out << "#description: expressed region annotation of genome based on bigwig and MM / RR splice junction information." << std::endl;
+    out << "#provider: FASTDER" << std::endl;
+    out << "#contact: marlehmann@ethz.ch" << std::endl;
+    out << "#format: gtf" << std::endl;
+    out << "#date: " << date << std::endl;
 
     for (unsigned int i = 0; i < this->stitched_ERs.size(); ++i)
     {
@@ -184,17 +184,6 @@ void Integrator::write_to_gtf(const std::string& output_path)
 
         gtf_row.change_feature("transcript", i + 1, 0);
         out << gtf_row << std::endl;
-        // std::cout << "gtf coords: " << gtf_row.start << " " << gtf_row.end << std::endl;
-        // std::cout << "stitched er coords: " << stitched_ERs[i].start << " " << stitched_ERs[i].end << std::endl;
-        // for (auto x : stitched_ERs[i].all_coverages)
-        // {
-        //     std::cout << x.first << ", " << x.second << std::endl;
-        // }
-
-        // for (auto x : stitched_ERs[i].er_ids)
-        // {
-        //     std::cout << x << std::endl;
-        // }
         int exon_nr = 1;
         // add the ERs within the stitched_er
         for (unsigned int k = 0; k < stitched_ERs[i].er_ids.size(); ++k)
@@ -216,8 +205,6 @@ void Integrator::write_to_gtf(const std::string& output_path)
                 //std::cout << "added sj length: " << stitched_ERs.at(i).all_coverages.at(k).first << std::endl;
             }
         }
-
-        //gtf_row.end = stitched_ERs[i].end; // missing the last exon in the chain
 
     }
     out.close();

@@ -73,12 +73,12 @@ void Parser::compute_per_base_coverage(const BedGraphRow& row, std::unordered_ma
 std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint64_t& library_size)
 {
     std::vector<BedGraphRow> bedgraph; // stores the full bedgraph of one sample, organized by rows (bins) with the same coverage
-    std::cout << filename << std::endl;
+    std::cout << "[FILE] " << filename << std::endl;
     //read in file from path
     std::ifstream file(filename);
     if (!file.is_open())
     {
-        std::cerr << "Error opening .bedgraph file " << filename << std::endl;
+        std::cerr << "[ERROR] could not open .bedgraph file " << filename << std::endl;
     }
     std::string line;
     // iterate over lines
@@ -143,7 +143,7 @@ void Parser::read_rr(std::string filename)
         // }
 
     }
-    std::cout << "nr of splice junctions in this study (not user-defined samples): " << rr_all_sj.size() << std::endl;
+    std::cout << "[INFO] Total number of splice junctions: " << rr_all_sj.size() << std::endl;
     //assert(rr_all_sj.size() == 9484210);
 
 
@@ -155,7 +155,7 @@ void Parser::read_rr(std::string filename)
 // IMPORTANT: the RR file is NOT sorted by chromosomes!
 void Parser::read_mm(std::string filename) {
 
-        std::cout << filename << std::endl;
+        std::cout << "[FILE] "<< filename << std::endl;
         //read in file from path
         std::ifstream file(filename);
         // max index is 2931 (= nr of samples)
@@ -164,7 +164,7 @@ void Parser::read_mm(std::string filename) {
 
         if (!file.is_open())
         {
-            std::cerr << "Error opening file " << filename << std::endl;
+            std::cerr << "[ERROR] could not open file " << filename << std::endl;
         }
         std::string line;
         bool seen_header = false;
@@ -223,7 +223,7 @@ void Parser::read_mm(std::string filename) {
             }
             //
         }
-        std::cout << "nr of lines read in MM file: " << count_lines << std::endl;
+        std::cout << "[INFO] MM file contains " << count_lines << " lines"<< std::endl;
         assert(sj_occ_in_samples <= count_lines);
     }
 
@@ -284,8 +284,8 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
         {
             // search for the external_id in rail_id_to_ext_id and then obtain the rail_id
             // the external id is part of the filename for all three sources GTEX, TCGA and SRA
-            std::cout <<" sample.second " << sample.second << std::endl;
-            std::cout <<" bedgraph file " << bedgraph_file<< std::endl;
+            // std::cout <<" sample.second " << sample.second << std::endl;
+            // std::cout <<" bedgraph file " << bedgraph_file<< std::endl;
             return bedgraph_file.find(sample.second) != std::string::npos;
         });
         if (it != rail_id_to_ext_id.end())
@@ -317,13 +317,13 @@ void Parser::search_directory() {
         // create rail_id_to_ext_id
         if (filename.find("BigWig_list") != std::string::npos && filename.find(".csv") != std::string::npos) //TODO I checked some filenames of the URL csv files manually and they all contain the substring BigWig_list, so I hope that this is a general rule
         {
-            std::cout << "BigWig URL list" << std::endl;
+            std::cout << "[INPUT] BigWig URL list" << std::endl;
             read_url_csv(filename);
             contains_ids = true;
         }
         // read RR file
         else if (filename.find("ALL.RR") != std::string::npos) {
-            std::cout << "RR file" << std::endl;
+            std::cout << "[INPUT] RR file" << std::endl;
             read_rr(filename);
 
         }
@@ -348,11 +348,11 @@ void Parser::search_directory() {
         return a.first < b.first;
     });
 
-    std::cout << "total nr of samples in this study:  " << rail_id_to_ext_id.size() << std::endl;
+    std::cout << "[INFO] The study contains " << rail_id_to_ext_id.size() << " samples. " << std::endl;
 
     // fill up rail_id_to_mm_id mapping for all rail_ids provided by the user
     fill_up(bedgraph_files);
-    std::cout << "nr of samples provided by user: " << rail_id_to_mm_sample_id.size() << std::endl;
+    std::cout << "[INFO] User provided " << rail_id_to_mm_sample_id.size() << " bedgraph files." << std::endl;
 
     // now parse all other files
     for (const auto & entry : std::filesystem::directory_iterator(path))
@@ -363,20 +363,20 @@ void Parser::search_directory() {
 
         // don't read in cached MM files as regular MM files!
         if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
-            std::cout << "MM file"<< std::endl;
+            std::cout << "[INPUT] MM file"<< std::endl;
             // TODO change!
-            read_mm(filename);
-            //read_mm_cached_always(filename);
+            //read_mm(filename);
+            read_mm_cached_always(filename);
 
         }
 
         else if (filename.find(".bedGraph") != std::string::npos) {
-            std::cout << "Bedgraph file"<< std::endl;
+            std::cout << "[INPUT] Bedgraph file"<< std::endl;
             //
             uint64_t library_size = 0; // ensure that the integer type is large enough
             std::vector<BedGraphRow> sample_bedgraph = read_bedgraph(filename, library_size);
             std::unordered_map<std::string, std::vector<double>> per_base_coverage;
-            std::cout << "library_size: " << library_size<< std::endl;
+            std::cout << "[INFO] Library size: " << library_size<< std::endl;
 
 
             //normalize to CPM and expand rows to per base coverage (also normalized)
@@ -396,12 +396,12 @@ void Parser::search_directory() {
             continue;
         }
         else {
-            std::cout << "UNKNOWN FILE CATEGORY " << filename  << std::endl;
+            std::cout << "[INFO] Unknown file category: " << filename  << std::endl;
         }
 
     }
 
-    std::cout << "FINISHED PARSING" << std::endl;
+    std::cout << "[INFO] Finished parsing all files." << std::endl;
 
 }
 // CACHING MM FILE
