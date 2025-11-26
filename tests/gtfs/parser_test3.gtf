@@ -2,7 +2,7 @@
 ##provider: FASTDER
 ##contact: marlehmann@ethz.ch
 ##format: gtf
-##date: 2025-11-25
+##date: 2025-11-26
 1	fastder	gene	10000	10500	225.982	.	.	gene_id "gene1"; gene_name "faster_gene1";
 1	fastder	transcript	10000	10500	225.982	.	.	gene_id "gene1"; transcript_id "tx1";
 1	fastder	exon	10000	10500	225.982	.	.	gene_id "gene1"; transcript_id "tx1"; exon_number "1";
