@@ -39,10 +39,11 @@ def run_mls():
 def parse_stats_file(stats_path: Path) -> dict:
     """
     Parse COMP_*.stats file from gffcompare and return a dict of metrics.
+    Only the FIRST dataset block (the query GTF) is used.
     """
     metrics = {}
 
-    # Default values (optional but can be handy)
+    # Default values
     levels = ["Base", "Exon", "Intron", "Intron chain", "Transcript", "Locus"]
     for level in levels:
         key_base = level.replace(" ", "_")
@@ -69,8 +70,25 @@ def parse_stats_file(stats_path: Path) -> dict:
         metrics[f"{key}_total"] = ""
         metrics[f"{key}_pct"] = ""
 
+    dataset_idx = 0      # which summary block we are in (1 = first/query)
+    use_block = False    # True only for the first dataset block
+
     with stats_path.open() as fh:
         for line in fh:
+            # Detect start of a new dataset summary block
+            if line.startswith("#= Summary for dataset:"):
+                dataset_idx += 1
+                if dataset_idx == 1:
+                    use_block = True      # parse this block
+                    continue
+                else:
+                    # We've reached the second dataset (reference) – stop parsing
+                    break
+
+            if not use_block:
+                # We are before the first summary or after it; ignore lines
+                continue
+
             # Sensitivity/Precision table
             m = re.match(r"^\s*(.+?) level:\s+([\d.]+)\s*\|\s*([\d.]+)", line)
             if m:
@@ -90,7 +108,7 @@ def parse_stats_file(stats_path: Path) -> dict:
                 metrics[f"Matching_{what}"] = value
                 continue
 
-            # Missed / Novel:
+            # Missed / Novel
             m = re.match(
                 r"^\s*(Missed exons|Novel exons|Missed introns|Novel introns|Missed loci|Novel loci):\s+(\d+)/(\d+)\s+\(\s*([\d.]+)%\)",
                 line,
@@ -106,6 +124,7 @@ def parse_stats_file(stats_path: Path) -> dict:
                 continue
 
     return metrics
+
 
 
 def run_gffcompare_and_collect(outputs_dir: Path, csv_name: str = "gffcompare_summary.csv"):
