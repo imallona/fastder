@@ -12,11 +12,11 @@ def run_mls():
     """
     Run ./mls for all parameter combinations.
     """
-    dir_arg = "../afe_data/"
-    position_tolerances = 2#[0, 1, 3, 5, 7, 9]
-    coverage_tolerances = 0.1 #[0.05, 0.1, 0.15, 0.2]
-    min_lengths = 5#[3, 5, 7, 10, 15]
-    min_coverages = 0.0001 #[0.25, 0.01, 0.005, 0.0001, 0.0005, 0.00001, 0.000001]
+    dir_arg = "../afe_data_param_tuning/"
+    position_tolerances = [2]#[0, 1, 3, 5, 7, 9]
+    coverage_tolerances = [0.1] #[0.05, 0.1, 0.15, 0.2]
+    min_lengths = [5]#[3, 5, 7, 10, 15]
+    min_coverages =[0.0001] #[0.25, 0.01, 0.005, 0.0001, 0.0005, 0.00001, 0.000001]
 
     for pt, ct, ml, mc in itertools.product(
             position_tolerances,
@@ -124,16 +124,18 @@ def run_gffcompare_and_collect(outputs_dir: Path, csv_name: str = "gffcompare_su
     ]
 
     rows = []
+    index = 0
     for result_file in sorted(result_files):
         stem = Path(result_file).stem
-        prefix = f"COMP_{stem}"
+        prefix = f"COMP_{index}"
+        index += 1
 
         cmd = [
             "gffcompare",
             "-r", "splicing_variants.gtf",
             "-o", prefix,
             result_file,
-            "sample_afe_seed1/splicing_variants.gtf",
+            "splicing_variants.gtf",
         ]
         print("Running:", " ".join(cmd))
         subprocess.run(cmd, check=True)
@@ -168,10 +170,10 @@ def run_gffcompare_and_collect(outputs_dir: Path, csv_name: str = "gffcompare_su
 
 def main():
     # Step 1: run ./mls for all parameter combinations
-    run_mls()
+    #run_mls()
 
     # Step 2: change into dir/outputs where dir is ../afe_data/
-    outputs_dir = Path("../afe_data") / "outputs"
+    outputs_dir = Path("../afe_data_param_tuning")
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 3: run gffcompare on each result file and collect metrics
