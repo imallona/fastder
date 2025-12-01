@@ -24,7 +24,6 @@ int main(int argc, char* argv[]) {
 
     std::cout
     << "\n "
-    << "\t \t \t \t \t\tWELCOME TO \n"
         <<
     "        _____ _    ____ _____ ____  _____ ____  \n"
     "       |  ___/ \\  / ___|_   _|  _ \\| ____|  _ \\ \n"
@@ -117,6 +116,7 @@ int main(int argc, char* argv[]) {
         else
         {
             std::cout << "[ERROR] Unknown argument '" << argv[i] << "'" << std::endl;
+            return 1;
         }
     }
 
@@ -125,10 +125,6 @@ int main(int argc, char* argv[]) {
         std::cout << "[ERROR] No working directory provided! Quitting...";
         return 1;
     }
-    // for (auto chr : chromosomes)
-    // {
-    //     std::cout << chr << std::endl;
-    // }
 
     // parse files
     Parser parser(directory, chromosomes);
@@ -137,36 +133,12 @@ int main(int argc, char* argv[]) {
     // get mean coverage vector
     Averager averager;
     averager.compute_mean_coverage(parser.all_per_base_coverages);
-    // for (const auto& cov : parser.all_per_base_coverages[0])
-    // {
-    //     std::cout << cov.first << ": ";
-    //     for (const auto& val : cov.second)
-    //         std::cout << val << " ";
-    //     std::cout << std::endl;
-    // }
-    // get expressed regions
-    averager.find_ERs(min_coverage, min_length);
-    //std::cout << averager.expressed_regions.size() << std::endl;
-    // std::cout << " first 20 out of " << averager.expressed_regions.size() <<" expressed regions" << std::endl;
-    // std::cout << "chrom" << "\t" << "start" << "\t" << "end" << "\t" << "coverage" << "\t" << "length" << std::endl;
 
-    // for (int i = 0; i  < averager.expressed_regions.size(); ++i)
-    // {
-    //     averager.expressed_regions.at(parser.chromosomes.at(0)).at(i).print();
-    // }
-    // std::cout << "*****************************" << std::endl;
-    // std::cout << " nr of chromosomes: " << parser.mm_chrom_sj.size() << std::endl;
-    // for (auto& chrom : parser.mm_chrom_sj)
-    // {
-    //     std::cout << " chrom " << chrom.first << " : " << chrom.second.size() << std::endl;
-    // }
+    averager.find_ERs(min_coverage, min_length);
 
     // use splice junctions to stitch together expressed regions
     Integrator integrator = Integrator(coverage_tolerance, position_tolerance);
     integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
-
-    // std::cout << "stitched ER index" << "\t" << "(" <<  "length" <<"," << "average coverage" << ")" << std::endl;
-    // std::cout << "stitched_er.across_er_coverage" << "\t" << "stitched_er.start" << "\t" << "stitched_er.end" << "\t" << "stitched_er.total_length" << std::endl;
 
 
     // SUMMARY OF SPLICE JUNCTIONS
@@ -178,7 +150,7 @@ int main(int argc, char* argv[]) {
     // SUMMARY OF EXPRESSED REGIONS
     for (auto& c : averager.expressed_regions)
     {
-        std::cout << "[INFO] Expressed Regions in chr" << c.first << " : " << c.second.size() << std::endl;
+        std::cout << "[INFO] Expressed Regions in " << c.first << " : " << c.second.size() << std::endl;
     }
 
     // SUMMARY OF STITCHED EXPRESSED REGIONS
@@ -197,8 +169,6 @@ int main(int argc, char* argv[]) {
 
 
     // convert to GTF format
-
-    // file name: FASTDER_RESULT_POS_5_COV_THR_0.1_COV_
     std::string output_path = directory + "/FASTDER_RESULT_POS_TOL_" + std::to_string(position_tolerance) + "_MIN_COV_" + std::to_string(min_coverage) + "_COV_TOL_" + std::to_string(coverage_tolerance) + "_MIN_LENGTH_" + std::to_string(min_length) + ".gtf";
     integrator.write_to_gtf(output_path);
 

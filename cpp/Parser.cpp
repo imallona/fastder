@@ -280,6 +280,7 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
     {
         // add the sample and its mm_id (= the rank of the rail id across the study, so all files in total) to rail_id_to_mm
         // [&] references all necessary variables i.e. the required context, here it's filename
+        std::cout << "[" << rail_id_to_ext_id.begin()->second << "]" << std::endl;
         auto it = std::find_if(rail_id_to_ext_id.begin(), rail_id_to_ext_id.end(), [&](const auto& sample)
         {
             // search for the external_id in rail_id_to_ext_id and then obtain the rail_id
