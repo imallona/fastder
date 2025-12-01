@@ -10,10 +10,10 @@
 #include "Averager.h"
 #include "GTFRow.h"
 #include "Integrator.h"
-
+#include <chrono>
 int main(int argc, char* argv[]) {
-
-    std::vector<std::string> chromosomes = {"chr19"}; // "chr1", "chr9",
+	auto start = std::chrono::high_resolution_clock::now();
+    std::vector<std::string> chromosomes; //= {"chr19"}; // "chr1", "chr9",
     // default values (if not provided by user)
     int position_tolerance = 20; // [3,5,7,10]
     int min_length = 10; //[5, 10]
@@ -201,7 +201,9 @@ int main(int argc, char* argv[]) {
     // file name: FASTDER_RESULT_POS_5_COV_THR_0.1_COV_
     std::string output_path = directory + "/FASTDER_RESULT_POS_TOL_" + std::to_string(position_tolerance) + "_MIN_COV_" + std::to_string(min_coverage) + "_COV_TOL_" + std::to_string(coverage_tolerance) + "_MIN_LENGTH_" + std::to_string(min_length) + ".gtf";
     integrator.write_to_gtf(output_path);
-
+	    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << "Elapsed time: " << elapsed.count() << " seconds\n";
 
     return 0;
 }

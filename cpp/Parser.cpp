@@ -278,14 +278,20 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
     //fill up rail_id_to_mm_id
     for (auto& bedgraph_file : bedgraph_files)
     {
+	    std::cout << bedgraph_file << std::endl; 
+	    std::cout << "[" << rail_id_to_ext_id.begin()->second << "]" << std::endl;
         // add the sample and its mm_id (= the rank of the rail id across the study, so all files in total) to rail_id_to_mm
         // [&] references all necessary variables i.e. the required context, here it's filename
-        auto it = std::find_if(rail_id_to_ext_id.begin(), rail_id_to_ext_id.end(), [&](const auto& sample)
+        auto it = std::find_if(rail_id_to_ext_id.begin(), rail_id_to_ext_id.end(), [&](auto& sample)
         {
             // search for the external_id in rail_id_to_ext_id and then obtain the rail_id
             // the external id is part of the filename for all three sources GTEX, TCGA and SRA
-            // std::cout <<" sample.second " << sample.second << std::endl;
-            // std::cout <<" bedgraph file " << bedgraph_file<< std::endl;
+  //          std::cout <<" sample.second " << sample.second << sample.second.size() << std::endl;
+    //        std::cout <<" bedgraph file " << bedgraph_file << std::endl;
+	    sample.second.erase(
+    std::remove(sample.second.begin(), sample.second.end(), '"'),
+    sample.second.end()
+);
             return bedgraph_file.find(sample.second) != std::string::npos;
         });
         if (it != rail_id_to_ext_id.end())
@@ -365,8 +371,8 @@ void Parser::search_directory() {
         if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
             std::cout << "[INPUT] MM file"<< std::endl;
             // TODO change!
-            //read_mm(filename);
-            read_mm_cached_always(filename);
+            read_mm(filename);
+            //read_mm_cached_always(filename);
 
         }
 
