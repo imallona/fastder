@@ -299,7 +299,7 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
 }
 
 void Parser::read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigned int nof_threads) {
-
+    std::cout << "[INFO] Using " << nof_threads << " threads" << std::endl;
     // reserve space
     all_bedgraphs.resize(bedgraph_files.size());
     all_per_base_coverages.resize(bedgraph_files.size());
