@@ -135,19 +135,9 @@ void Parser::read_rr(std::string filename)
 
         // rr_all_sj needs to contain all sj_ids, even those of chromosomes that aren't provided in the bedgraph files --> otherwise the mapping from RR to MM file via sj_id is broken
         rr_all_sj.push_back(row);
-        //std::cout << rr_all_sj.back() << std::endl;
-
-        // store chromosome the sequence of chromosomes in the RR file --> append chromosome to vector if it's not an element of the vector yet
-        // if (this->chr_permitted(row.chrom) && std::ranges::find(chromosomes, row.chrom) == chromosomes.end()) {
-        //     std::cout << row << std::endl;
-        //     chromosomes.push_back(row.chrom);
-        // }
-
     }
     std::cout << "[INFO] Total number of splice junctions: " << rr_all_sj.size() << std::endl;
     //assert(rr_all_sj.size() == 9484210);
-
-
 
 }
 
@@ -155,8 +145,6 @@ void Parser::read_rr(std::string filename)
 // create dictionary mm_sj_counts with keys (sj_id) and values (cumulative count of this sj across samples)
 // IMPORTANT: the RR file is NOT sorted by chromosomes!
 void Parser::read_mm(std::string filename) {
-
-        //std::cout << "[FILE] "<< filename << std::endl;
         //read in file from path
         std::ifstream file(filename);
         // max index is 2931 (= nr of samples)
@@ -188,8 +176,11 @@ void Parser::read_mm(std::string filename) {
             if (!seen_header) {
                 // header: 9484210	2931	699368828, actual #lines = 699368831
                 iss >> nr_of_sj >> nr_of_samples >> sj_occ_in_samples;
-                std::cout << nr_of_sj << ", " << rr_all_sj.size() << std::endl;
-                assert(nr_of_sj == rr_all_sj.size());
+                //std::cout << nr_of_sj << ", " << rr_all_sj.size() << std::endl;
+                if (nr_of_sj != rr_all_sj.size()) {
+                    std::cerr << "[ERROR] RR File and number of splice junctions are not equal! Quitting...";
+                    return;
+                }
                 seen_header = true;
                 continue;
             }
@@ -287,8 +278,8 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
         {
             // search for the external_id in rail_id_to_ext_id and then obtain the rail_id
             // the external id is part of the filename for all three sources GTEX, TCGA and SRA
-            std::cout <<" target " << sample.second << ", size =" << sample.second.size() << std::endl;
-            std::cout <<" bedgraph file " << bedgraph_file << std::endl;
+            //std::cout <<" target " << sample.second << ", size =" << sample.second.size() << std::endl;
+            //std::cout <<" bedgraph file " << bedgraph_file << std::endl;
 	        sample.second.erase(std::remove(sample.second.begin(), sample.second.end(), '"'),
 	            sample.second.end());
             return bedgraph_file.find(sample.second) != std::string::npos;
