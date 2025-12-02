@@ -16,12 +16,14 @@ class Parser {
 public:
     Parser(std::string path_, std::vector<std::string> chromosomes_);
     void search_directory();
+
     // Cache MM file because it takes so long to parse
     void save_mm_cache_(const std::filesystem::path& cache) const;
     bool load_mm_cache_(const std::filesystem::path& cache);
     void read_mm_cached_always(const std::string& filename);
 
     // read in individual file types
+    void read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigned int nof_threads);
     std::vector<BedGraphRow> read_bedgraph(const std::string& filename, uint64_t& library_size);
     void read_mm(std::string filename);
     void read_rr(std::string filename);

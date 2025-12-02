@@ -11,7 +11,10 @@
 #include "GTFRow.h"
 #include "Integrator.h"
 #include <chrono>
+#include <thread>
 int main(int argc, char* argv[]) {
+    // unsigned int max_threads = std::thread::hardware_concurrency();
+    // std::cout << max_threads << " threads" << std::endl;
 	auto start = std::chrono::high_resolution_clock::now();
     std::vector<std::string> chromosomes; //= {"chr19"}; // "chr1", "chr9",
     // default values (if not provided by user)
@@ -171,9 +174,11 @@ int main(int argc, char* argv[]) {
     // convert to GTF format
     std::string output_path = directory + "/FASTDER_RESULT_POS_TOL_" + std::to_string(position_tolerance) + "_MIN_COV_" + std::to_string(min_coverage) + "_COV_TOL_" + std::to_string(coverage_tolerance) + "_MIN_LENGTH_" + std::to_string(min_length) + ".gtf";
     integrator.write_to_gtf(output_path);
-	    auto end = std::chrono::high_resolution_clock::now();
+
+    // print duration
+    auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
-    std::cout << "Elapsed time: " << elapsed.count() << " seconds\n";
+    std::cout << "[INFO] Duration: " << elapsed.count() << " seconds\n";
 
     return 0;
 }

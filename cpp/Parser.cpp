@@ -10,6 +10,8 @@
 #include <BedGraphRow.h>
 #include <cassert>
 #include <algorithm>
+#include <thread>
+#include <future>
 #include <cstdint> // for library size which can be too large for unsigned int
 
 #include "Parser.h"
@@ -73,7 +75,7 @@ void Parser::compute_per_base_coverage(const BedGraphRow& row, std::unordered_ma
 std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint64_t& library_size)
 {
     std::vector<BedGraphRow> bedgraph; // stores the full bedgraph of one sample, organized by rows (bins) with the same coverage
-    std::cout << "[FILE] " << filename << std::endl;
+    //std::cout << "[FILE] " << filename << std::endl;
     //read in file from path
     std::ifstream file(filename);
     if (!file.is_open())
@@ -109,7 +111,6 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
 // read rr file
 void Parser::read_rr(std::string filename)
 {
-    std::cout << filename << std::endl;
     //read in file from path
     std::ifstream file(filename);
     if (!file.is_open())
@@ -155,7 +156,7 @@ void Parser::read_rr(std::string filename)
 // IMPORTANT: the RR file is NOT sorted by chromosomes!
 void Parser::read_mm(std::string filename) {
 
-        std::cout << "[FILE] "<< filename << std::endl;
+        //std::cout << "[FILE] "<< filename << std::endl;
         //read in file from path
         std::ifstream file(filename);
         // max index is 2931 (= nr of samples)
@@ -278,20 +279,18 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
     //fill up rail_id_to_mm_id
     for (auto& bedgraph_file : bedgraph_files)
     {
-	    std::cout << bedgraph_file << std::endl; 
-	    std::cout << "[" << rail_id_to_ext_id.begin()->second << "]" << std::endl;
+	    //std::cout << bedgraph_file << std::endl;
+	    //std::cout << "[" << rail_id_to_ext_id.begin()->second << "]" << std::endl;
         // add the sample and its mm_id (= the rank of the rail id across the study, so all files in total) to rail_id_to_mm
         // [&] references all necessary variables i.e. the required context, here it's filename
         auto it = std::find_if(rail_id_to_ext_id.begin(), rail_id_to_ext_id.end(), [&](auto& sample)
         {
             // search for the external_id in rail_id_to_ext_id and then obtain the rail_id
             // the external id is part of the filename for all three sources GTEX, TCGA and SRA
-  //          std::cout <<" sample.second " << sample.second << sample.second.size() << std::endl;
-    //        std::cout <<" bedgraph file " << bedgraph_file << std::endl;
-	    sample.second.erase(
-    std::remove(sample.second.begin(), sample.second.end(), '"'),
-    sample.second.end()
-);
+            std::cout <<" target " << sample.second << ", size =" << sample.second.size() << std::endl;
+            std::cout <<" bedgraph file " << bedgraph_file << std::endl;
+	        sample.second.erase(std::remove(sample.second.begin(), sample.second.end(), '"'),
+	            sample.second.end());
             return bedgraph_file.find(sample.second) != std::string::npos;
         });
         if (it != rail_id_to_ext_id.end())
@@ -308,7 +307,64 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
     }
 }
 
+void Parser::read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigned int nof_threads) {
 
+    // reserve space
+    all_bedgraphs.resize(bedgraph_files.size());
+    all_per_base_coverages.resize(bedgraph_files.size());
+
+    // storage for threads
+    std::vector<std::thread> threads;
+    threads.reserve(nof_threads);
+    // mutex to write to file
+    static std::mutex mutex;
+
+    // threads sanity check
+    if (nof_threads > bedgraph_files.size()) {
+        std::cerr << "[ERROR] Too many threads! Quitting...";
+        return;
+    }
+
+    // atomic number for index --> never shared, so each index is used exactly once
+    // sequence of samples within all_bedgraphs is irrelevant
+    std::atomic_int next_index{0};
+
+    for (unsigned int t = 0; t < nof_threads; ++t) {
+        threads.emplace_back([this, &bedgraph_files, &next_index]() {
+            // infinite loop to ensure that each thread takes the next bedgraph in the queue when it's done
+            while (true) {
+                unsigned int i = next_index++; //passes index, then does post-increment!
+                if (i >= bedgraph_files.size()) break;
+
+                // scope to ensure print statement is not shuffled from concurrency
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    std::cout << "[FILE] Processing BedGraph File " << bedgraph_files.at(i) << std::endl;
+                }
+                uint64_t library_size = 0; // ensure that the integer type is large enough
+                std::vector<BedGraphRow> sample_bedgraph = read_bedgraph(bedgraph_files.at(i), library_size);
+                std::unordered_map<std::string, std::vector<double>> per_base_coverage;
+                //std::cout << "[INFO] Library size: " << library_size<< std::endl;
+
+                //normalize to CPM and expand rows to per base coverage (also normalized)
+                for (BedGraphRow& row : sample_bedgraph)
+                {
+                    row.normalize(library_size);
+                    compute_per_base_coverage(row, per_base_coverage);
+                    // row.print();
+                }
+
+                // add to matrix of all bedgraphs per sample
+                all_bedgraphs[i] = std::move(sample_bedgraph);
+                all_per_base_coverages[i] = std::move(per_base_coverage);
+            }
+        });
+    }
+
+    for (auto& thr: threads) {
+        thr.join();
+    }
+}
 
 // attempt to parse all files in path (not recursive!)
 void Parser::search_directory() {
@@ -317,34 +373,44 @@ void Parser::search_directory() {
 
     // first check for the external_id to rail_id mapping CSV file
     std::vector<std::string> bedgraph_files;
+    std::string mm_file;
     for (const auto & entry : std::filesystem::directory_iterator(path))
     {
         std::string filename = entry.path().string();
         // create rail_id_to_ext_id
         if (filename.find("BigWig_list") != std::string::npos && filename.find(".csv") != std::string::npos) //TODO I checked some filenames of the URL csv files manually and they all contain the substring BigWig_list, so I hope that this is a general rule
         {
-            std::cout << "[INPUT] BigWig URL list" << std::endl;
+            std::cout << "[INPUT] BigWig URL list " << filename << std::endl;
             read_url_csv(filename);
             contains_ids = true;
         }
         // read RR file
         else if (filename.find("ALL.RR") != std::string::npos) {
-            std::cout << "[INPUT] RR file" << std::endl;
+            std::cout << "[INPUT] RR file" << filename << std::endl;
             read_rr(filename);
 
         }
 
         // collect all bedgraph files to later fill up rail_id_to_mm_id
-        if (filename.find(".bedGraph") != std::string::npos)
+        else if (filename.find(".bedGraph") != std::string::npos)
         {
+            std::cout << "[INPUT] Bedgraph file "<< filename << std::endl;
             bedgraph_files.push_back(filename);
+        }
+
+        else if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos) {
+            std::cout << "[INPUT] MM file " << filename << std::endl;
+            mm_file = filename;
+        }
+        else {
+            std::cout << "[INFO] Unknown file category: " << filename  << std::endl;
         }
     }
 
     // program cannot run with missing BigWig URL list
-    if (!contains_ids)
+    if (!contains_ids || mm_file.empty() || bedgraph_files.empty())
     {
-        std::cerr << "[ERROR] Missing BigWig URL list! Exiting...";
+        std::cerr << "[ERROR] Missing input file! Exiting...";
         return;
     }
 
@@ -360,53 +426,18 @@ void Parser::search_directory() {
     fill_up(bedgraph_files);
     std::cout << "[INFO] User provided " << rail_id_to_mm_sample_id.size() << " bedgraph files." << std::endl;
 
-    // now parse all other files
-    for (const auto & entry : std::filesystem::directory_iterator(path))
-    {
-        std::string filename = entry.path().string();
+    unsigned int max_threads = std::max(int(std::thread::hardware_concurrency()), 4); //require at least 4 cores
+    unsigned int nof_samples =  rail_id_to_mm_sample_id.size();
+    unsigned int nof_threads = std::min(max_threads, nof_samples);
 
-        //std::cout << filename << std::endl;
+    // launch separate thread to parse MM file
+    std::thread mm_thread(&Parser::read_mm, this, mm_file);
 
-        // don't read in cached MM files as regular MM files!
-        if (entry.path().extension().string() == ".MM" && filename.find("ALL.MM") != std::string::npos && filename.find("mmcache") == std::string::npos ) {
-            std::cout << "[INPUT] MM file"<< std::endl;
-            // TODO change!
-            read_mm(filename);
-            //read_mm_cached_always(filename);
+    // parse all bedgraph files concurrently
+    read_all_bedgraphs(bedgraph_files, nof_threads);
 
-        }
-
-        else if (filename.find(".bedGraph") != std::string::npos) {
-            std::cout << "[INPUT] Bedgraph file"<< std::endl;
-            //
-            uint64_t library_size = 0; // ensure that the integer type is large enough
-            std::vector<BedGraphRow> sample_bedgraph = read_bedgraph(filename, library_size);
-            std::unordered_map<std::string, std::vector<double>> per_base_coverage;
-            std::cout << "[INFO] Library size: " << library_size<< std::endl;
-
-
-            //normalize to CPM and expand rows to per base coverage (also normalized)
-            for (BedGraphRow& row : sample_bedgraph)
-            {
-                row.normalize(library_size);
-                compute_per_base_coverage(row, per_base_coverage);
-               // row.print();
-            }
-
-            // add to matrix of all bedgraphs per sample
-            all_bedgraphs.push_back(sample_bedgraph);
-            all_per_base_coverages.push_back(per_base_coverage);
-
-        }
-        else if ((filename.find("BigWig_list") != std::string::npos && filename.find(".csv") != std::string::npos) || (filename.find("ALL.RR") != std::string::npos)){
-            continue;
-        }
-        else {
-            std::cout << "[INFO] Unknown file category: " << filename  << std::endl;
-        }
-
-    }
-
+    // stop MM thread
+    mm_thread.join();
     std::cout << "[INFO] Finished parsing all files." << std::endl;
 
 }
