@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
     // unsigned int max_threads = std::thread::hardware_concurrency();
     // std::cout << max_threads << " threads" << std::endl;
 	auto start = std::chrono::high_resolution_clock::now();
-    std::vector<std::string> chromosomes; //= {"chr19"}; // "chr1", "chr9",
+    std::vector<std::string> chromosomes = {"chr19"}; // "chr1", "chr9",
     // default values (if not provided by user)
     int position_tolerance = 20; // [3,5,7,10]
     int min_length = 10; //[5, 10]
@@ -167,7 +167,7 @@ int main(int argc, char* argv[]) {
 
     for (auto& c : ser_counts)
     {
-        std::cout << "[INFO] Stitched ERs in chr" << c.first << " : " << c.second << std::endl;
+        std::cout << "[INFO] Stitched ERs in " << c.first << " : " << c.second << std::endl;
     }
 
 

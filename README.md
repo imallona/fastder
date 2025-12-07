@@ -23,7 +23,7 @@ Thus, the user can either provide data from one of the existing studies or run t
 `recount3` provides uniformly processed RNA-seq data for over 8'000 human and over 10'000 mouse studies. Each study consists of several thousand samples. Existing input files can be retrieved from the [recount3 online platform](https://jhubiostatistics.shinyapps.io/recount3-study-explorer/).
 If a user wishes to run `fastder` on new RNA-seq data, the easiest way to obtain the required input data is to run the `recount3` pipeline.
 
-![Data](assets/data.png)
+![Data](assets/input_data.png)
 
 
 ### Recount3 Pipeline
@@ -46,10 +46,12 @@ A brief summary of the relevant steps in the `Monorail` system (used to create `
 ## Code Structure
 
 ### Relational Database Model
-The following image provides an overview of the tables and objects used in `fastder`. The _File suffix indicates that the table is one of the input files. 
-All other tables are objects created by the `Parser` class to map between the IDs used by the different tables.
+The following diagram provides an overview of the tables and objects used in `fastder`. The _File suffix indicates that the table is one of the input files. 
+All other tables are objects created by the `Parser` class to map between the three different sample IDs (in lilac) used by the splice junction and coverage files respectively.
 
-![Relational Database Model in fastder](assets/DBML.png)
+
+
+![Relational Database Model in fastder](assets/database.png)
 
 ### UML Diagram
 `fastder` is comprised of 7 different classes. The blue classes are used to define custom data types and associated methods, 
@@ -58,9 +60,9 @@ whereas the green classes are wrappers for the three main functional stages of `
 ![UML Diagram of fastder](assets/UML.png)
 
 ### Sequence Diagram
-The following sequence diagram provides an abstracted overview of the main stages of `fastder`.
+The following sequence diagram provides an abstracted overview of the three main functional stages of `fastder`.
 
-![Sequence Diagram of fastder](assets/Sequence_Diagram_Main.png)
+![Sequence Diagram of fastder](assets/sequence.png)
 ## Usage
 
 `fastder` can currently take only one RR and MM file as an input. Thus, users directly working with
@@ -77,6 +79,10 @@ that the tool will only output expressed regions on chromosome 1, and will ignor
   an ER with end position = 1000 bp and a splice junction with start position = 1005 bp will be stitched together (if the coverage and end junction match).
   - `--coverage-tolerance 0.1` describes the maximum permitted coverage deviation between two ER that are separated by a spliced region. For a coverage tolerance of 0.1, 
   two ERs with coverage = 10 CPM and 11 CPM will be stitched together (if there is a matching splice junction).
+
+A visualization of the different parameters is provided below.
+
+![Parameters of fastder](assets/parameters.png)
 ```
 Usage:
    fastder \
