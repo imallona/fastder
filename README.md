@@ -27,8 +27,8 @@ If a user wishes to run `fastder` on new RNA-seq data, the easiest way to obtain
 
 
 ### Recount3 Pipeline
-`fastder` builds on
-A brief summary of the relevant steps in the `Monorail` system (used to create `recount3` resources) is provided below:
+`fastder` builds on the `Monorail` pipeline used by `recount3`. `Monorail` takes the FASTQ files provided by Illumina Sequencing as an input.
+A brief summary of the relevant steps in the `Monorail` pipeline (used to create `recount3` resources) is provided below:
 
 1. Input data: 
    1. unpaired or paired-end FASTQ files
@@ -49,15 +49,7 @@ A brief summary of the relevant steps in the `Monorail` system (used to create `
 The following diagram provides an overview of the tables and objects used in `fastder`. The _File suffix indicates that the table is one of the input files. 
 All other tables are objects created by the `Parser` class to map between the three different sample IDs (in lilac) used by the splice junction and coverage files respectively.
 
-
-
 ![Relational Database Model in fastder](assets/database.png)
-
-### UML Diagram
-`fastder` is comprised of 7 different classes. The blue classes are used to define custom data types and associated methods, 
-whereas the green classes are wrappers for the three main functional stages of `fastder`.
-
-![UML Diagram of fastder](assets/UML.png)
 
 ### Sequence Diagram
 The following sequence diagram provides an abstracted overview of the three main functional stages of `fastder`.
@@ -144,4 +136,6 @@ GPLv3
 
 martina.lavanya@gmail.com
 
-## Acknowledgements
+## TODO
+- Snakemake pipeline
+- installation requirements: CMAke version 4 or newer
