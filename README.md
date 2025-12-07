@@ -1,4 +1,5 @@
-# _fastder_ - Fast Detection of Expressed Regions
+![Logo](assets/logo.png)
+# _fastder_  
 `fastder` is a C++ based tool for detecting expressed regions in RNA-seq data. 
 It is intended to build on the `recount3` [resource](https://rna.recount.bio/), which consists of over 750'000 uniformly processed RNA-seq samples across different mouse and human studies.
 The tool aims to reconstruct expressed genes prior to splicing in an annotation-agnostic approach.
@@ -19,17 +20,14 @@ Thus, the user can either provide data from one of the existing studies or run t
 
 ## Input data
 
-`fastder` takes four different input files
-1. At least one genome-wide **coverage bigWig files**, one file per sample
-2. One **Market Matrix splice junction coordinate file** (MM file)
-3. One **exon-exon junctions coordinate file** (RR file)
-4. One bigWig **metadata CSV file**
+`recount3` provides uniformly processed RNA-seq data for over 8'000 human and over 10'000 mouse studies. Each study consists of several thousand samples. Existing input files can be retrieved from the [recount3 online platform](https://jhubiostatistics.shinyapps.io/recount3-study-explorer/).
+If a user wishes to run `fastder` on new RNA-seq data, the easiest way to obtain the required input data is to run the `recount3` pipeline.
 
+![Data](assets/data.png)
 
-`recount3` provides uniformly processed RNA-seq data for over 8'000 human and over 10'000 mouse studies. Existing input files can be retrieved from the [recount3 online platform](https://jhubiostatistics.shinyapps.io/recount3-study-explorer/). 
-If a user wishes to run `fastder` on new RNA-seq data, the easiest way to obtain the required input data is to run the `recount3` pipeline. 
 
 ### Recount3 Pipeline
+`fastder` builds on
 A brief summary of the relevant steps in the `Monorail` system (used to create `recount3` resources) is provided below:
 
 1. Input data: 
