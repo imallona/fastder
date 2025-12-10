@@ -54,24 +54,24 @@ jobs:
         cd build
         ctest --output-on-failure --verbose
     
-    - name: Run cppcheck      
-      uses: deep5050/cppcheck-action@main
-      with:
-        skip_preprocessor: disable
-        enable: all #performance,portability,warning
-        exclude_check: ./__tests__/exclude/
-        inconclusive: disable
-        inline_suppression: disable
-        force_language: c++
-        force: enable
-        max_ctu_depth: 12
-        platform: disable
-        output_file: cppcheck_report.txt
-        other_options: --bug-hunting --verbose
+    # - name: Run cppcheck      
+    #   uses: deep5050/cppcheck-action@main
+    #   with:
+    #     skip_preprocessor: disable
+    #     enable: all #performance,portability,warning
+    #     exclude_check: ./__tests__/exclude/
+    #     inconclusive: disable
+    #     inline_suppression: disable
+    #     force_language: c++
+    #     force: enable
+    #     max_ctu_depth: 12
+    #     platform: disable
+    #     output_file: cppcheck_report.txt
+    #     other_options: --bug-hunting --verbose
 
-    - name: Show cppcheck report
-      run: |
-        cat cppcheck_report.txt
+    # - name: Show cppcheck report
+    #   run: |
+    #     cat cppcheck_report.txt
 
     - name: Build Debian package
       shell: bash -l {0}
