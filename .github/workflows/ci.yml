@@ -1,4 +1,4 @@
-name: test
+name: build_and_test
 
 on:
   pull_request:
@@ -12,11 +12,13 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+      
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake g++ cppcheck
+        sudo apt-get install -y g++ cppcheck python3-pip
+        pip3 install "cmake>=4.0"
+        cmake --version
     
     - name: Configure CMake
       run: |
