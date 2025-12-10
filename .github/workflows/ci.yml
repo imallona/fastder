@@ -13,30 +13,48 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Install dependencies
+    # - name: Install dependencies
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y g++ cppcheck python3-pip
+    #     pip3 install "cmake>=4.0"
+    #     cmake --version
+        
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        python-version: 3.12
+        channels: conda-forge,nodefaults
+        activate-environment: build-env
+
+    - name: Install build tools
+      shell: bash -l {0}
       run: |
-        sudo apt-get update
-        sudo apt-get install -y g++ cppcheck python3-pip
-        pip3 install "cmake>=4.0"
+        conda install -y conda-build make gxx_linux-64 cmake>=4.0
         cmake --version
-    
+        conda-build --version
+        
     - name: Configure CMake
+      shell: bash -l {0}
       run: |
         mkdir -p build
         cd build
         cmake ..
     
     - name: Build
+      shell: bash -l {0}
       run: |
         cd build
         make -j$(nproc)
     
     - name: Run tests
+      shell: bash -l {0}
       run: |
         cd build
         ctest --output-on-failure --verbose
     
-    - name: Run cppcheck
+    - name: Run cppcheck      
       uses: deep5050/cppcheck-action@main
       with:
         skip_preprocessor: disable
@@ -54,3 +72,26 @@ jobs:
     - name: Show cppcheck report
       run: |
         cat cppcheck_report.txt
+
+    - name: Build Debian package
+      shell: bash -l {0}
+      run: |
+        cd build
+        cpack -G DEB
+
+    - name: Debian package as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: deb-package
+        path: build/*.deb
+
+    - name: Build Conda package
+      shell: bash -l {0}
+      run: |
+        conda-build conda/recipe
+
+    - name: Conda package as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: conda-package
+        path: /usr/share/miniconda3/conda-bld/*/*.tar.bz2
