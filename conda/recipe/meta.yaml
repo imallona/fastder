@@ -7,12 +7,7 @@ source:
 
 build:
   number: 0
-  script: |
-    mkdir build
-    cd build
-    cmake ..
-    make -j${CPU_COUNT}
-    make install DESTDIR=$PREFIX
+  script: bash build.sh
 
 requirements:
   build:
