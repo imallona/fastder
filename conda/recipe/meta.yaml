@@ -1,0 +1,24 @@
+package:
+  name: fastder
+  version: "0.0.1"
+
+source:
+  path: ../..   # points to the root of the repo
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - cmake >=4.0
+    - make
+    - gcc
+    - gxx
+    - pthread-stubs
+  run:
+    - libstdcxx-ng
+
+about:
+  home: "https://github.com/imallona/fastder"
+  license: "MIT"
+  summary: "fastder, a faster expressed regions finder for RNA-seq"

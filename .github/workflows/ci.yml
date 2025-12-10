@@ -1,0 +1,101 @@
+name: build_and_test
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    # - name: Install dependencies
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y g++ cppcheck python3-pip
+    #     pip3 install "cmake>=4.0"
+    #     cmake --version
+        
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        python-version: 3.12
+        channels: conda-forge,nodefaults
+        activate-environment: build-env
+
+    - name: Install build tools
+      shell: bash -l {0}
+      run: |
+        conda install -y conda-build make gxx_linux-64 cmake>=4.0
+        cmake --version
+        conda-build --version
+        
+    - name: Configure CMake
+      shell: bash -l {0}
+      run: |
+        mkdir -p build
+        cd build
+        cmake ..
+    
+    - name: Build
+      shell: bash -l {0}
+      run: |
+        cd build
+        make -j$(nproc)
+    
+    - name: Run tests
+      shell: bash -l {0}
+      run: |
+        cd build
+        ctest --output-on-failure --verbose
+    
+    # - name: Run cppcheck      
+    #   uses: deep5050/cppcheck-action@main
+    #   with:
+    #     skip_preprocessor: disable
+    #     enable: all #performance,portability,warning
+    #     exclude_check: ./__tests__/exclude/
+    #     inconclusive: disable
+    #     inline_suppression: disable
+    #     force_language: c++
+    #     force: enable
+    #     max_ctu_depth: 12
+    #     platform: disable
+    #     output_file: cppcheck_report.txt
+    #     other_options: --bug-hunting --verbose
+
+    # - name: Show cppcheck report
+    #   run: |
+    #     cat cppcheck_report.txt
+
+    - name: Build Debian package
+      shell: bash -l {0}
+      run: |
+        cd build
+        cpack -G DEB
+
+    - name: Debian package as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: fastder
+        path: build/*.deb
+        # files: build/*.deb
+
+    - name: Clean previous build
+      run: rm -rf build
+      
+    - name: Build Conda package
+      shell: bash -l {0}
+      run: |
+        conda-build conda/recipe
+
+    - name: Conda package as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: conda-package
+        path: /usr/share/miniconda3/conda-bld/*/*.tar.bz2
