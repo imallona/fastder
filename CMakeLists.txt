@@ -1,3 +1,5 @@
+option(CONDA_BUILD "Building inside conda-build" OFF)
+
 cmake_minimum_required(VERSION 4.0)
 project(mls)
 
@@ -27,7 +29,10 @@ add_executable(mls
 target_link_libraries(mls PRIVATE mls_lib Threads::Threads)
 
 enable_testing()
-add_subdirectory(tests)
+
+if(NOT CONDA_BUILD)
+       add_subdirectory(tests)
+endif()
 
 # packaging
 set(CPACK_PACKAGE_NAME "fastder")
