@@ -86,6 +86,9 @@ jobs:
         path: build/*.deb
         # files: build/*.deb
 
+    - name: Clean previous build
+      run: rm -rf build
+      
     - name: Build Conda package
       shell: bash -l {0}
       run: |
