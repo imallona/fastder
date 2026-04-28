@@ -166,26 +166,40 @@ void Parser::read_rr(std::string filename)
     }
     std::string line;
 
-    // iterate over lines
+    // Two-pass parse: keep only RR rows whose chromosome is in
+    // chromosomes_set. The on-disk MM references rows by their 1-based RR
+    // row number, so we record a remap from old sj_id to the new compact
+    // index in rr_all_sj. Dropped rows get 0 in the remap.
+    // For full hg38 with --chr chr21, this drops rr_all_sj from about 9.5M
+    // rows to about 3.5k rows. The remap itself costs 4 bytes per RR row.
+    rr_all_sj.clear();
+    sj_id_remap.clear();
+    rr_total_rows = 0;
+
     while (std::getline(file, line))
     {
-        // read in line by line
-        std::istringstream iss(line);
-
-        // skip invalid lines and headers (which contain the string "chromosome" --> actually don't skip ERCC and Y-chromosome since we need all sj_ids to be correct
-        if (line.empty() || line.find("chromosome") != std::string::npos) {//|| line.find("ERCC-") != std::string::npos || line.find("chrY") != std::string::npos) {
-            //std::cout << line << std::endl;
+        // skip invalid lines and headers (which contain the string "chromosome")
+        if (line.empty() || line.find("chromosome") != std::string::npos) {
             continue;
         }
-        SJRow row = SJRow();
+
+        SJRow row;
+        std::istringstream iss(line);
         iss >> row;
 
-        // rr_all_sj needs to contain all sj_ids, even those of chromosomes that aren't provided in the bedgraph files --> otherwise the mapping from RR to MM file via sj_id is broken
-        rr_all_sj.emplace_back(row);
-    }
-    std::cout << "[INFO] Total number of splice junctions: " << rr_all_sj.size() << std::endl;
-    //assert(rr_all_sj.size() == 9484210);
+        ++rr_total_rows;
 
+        if (chromosomes_set.contains(row.chrom)) {
+            rr_all_sj.emplace_back(std::move(row));
+            // 1-based index into rr_all_sj
+            sj_id_remap.push_back(static_cast<uint32_t>(rr_all_sj.size()));
+        } else {
+            sj_id_remap.push_back(0);  // sentinel: row not retained
+        }
+    }
+    std::cout << "[INFO] RR rows total: " << rr_total_rows
+              << " | retained for analysed chromosomes: " << rr_all_sj.size()
+              << std::endl;
 }
 
 
@@ -223,9 +237,12 @@ void Parser::read_mm(std::string filename) {
                 std::istringstream iss(line);
                 // header: 9484210	2931	699368828, actual #lines = 699368831
                 iss >> nr_of_sj >> nr_of_samples >> sj_occ_in_samples;
-                //std::cout << nr_of_sj << ", " << rr_all_sj.size() << std::endl;
-                if (nr_of_sj != rr_all_sj.size()) {
-                    std::cerr << "[ERROR] RR File and number of splice junctions are not equal! Quitting...";
+                // Compare against the *total* number of rows seen in RR, not
+                // rr_all_sj.size(): rr_all_sj is now a chr-filtered subset.
+                if (nr_of_sj != rr_total_rows) {
+                    std::cerr << "[ERROR] MM header sj count (" << nr_of_sj
+                              << ") does not match RR row count (" << rr_total_rows
+                              << "). Quitting..." << std::endl;
                     return;
                 }
                 seen_header = true;
@@ -258,12 +275,17 @@ void Parser::read_mm(std::string filename) {
                 continue;
             }
 
-            // add count if the mm_id corresponds to any of the provided samples
-            // check in chromosomes_set to prevent using splice junctions on chromosomes that weren't parsed
-            if (mm_ids.contains(mm_id) && chromosomes_set.contains(rr_all_sj[sj_id - 1].chrom)) // rail_id_to_mm_id has <rail_id, mm_id> mapping
+            // Look up the new (post-filter) sj_id via the remap built in
+            // read_rr. A 0 means this junction was on a chromosome we don't
+            // analyse and was dropped — skip without ever touching rr_all_sj.
+            if (sj_id == 0 || sj_id - 1 >= sj_id_remap.size()) continue;
+            const uint32_t new_sj_id = sj_id_remap[sj_id - 1];
+            if (new_sj_id == 0) continue;
+
+            if (mm_ids.contains(mm_id))
             {
-                // store vector of sj_ids for each chromosome
-                mm_chrom_sj[rr_all_sj[sj_id - 1].chrom].emplace_back(sj_id);
+                // mm_chrom_sj stores *new* sj_ids (indexes into rr_all_sj).
+                mm_chrom_sj[rr_all_sj[new_sj_id - 1].chrom].emplace_back(new_sj_id);
             }
         }
         //std::cout << "[INFO] MM file contains " << count_lines << " lines"<< std::endl;

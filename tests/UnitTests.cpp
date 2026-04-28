@@ -29,7 +29,7 @@ TEST(SpliceTestChromOne, TwoStitchedERsTwoSJs)
         BedGraphRow("chr1", 12861, 12999, 29), // length 138
         BedGraphRow("chr1", 14001, 14540, 30)  // length 539
     };
-    std::map<std::string, std::vector<uint64_t>> mm_chrom_sj;
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
     mm_chrom_sj["chr1"] = {1, 2};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
@@ -57,7 +57,7 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJs)
         BedGraphRow("chr1", 14001, 14201, 30),
         BedGraphRow("chr1", 14999, 15300, 30),
     };
-    std::map<std::string, std::vector<uint64_t>> mm_chrom_sj;
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
@@ -85,7 +85,7 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJsAndTailingER)
         BedGraphRow("chr1", 14999, 15300, 30),
         BedGraphRow("chr1", 15300, 15600, 37),
     };
-    std::map<std::string, std::vector<uint64_t>> mm_chrom_sj;
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
@@ -114,7 +114,7 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJsAndTwoTailingERs)
         BedGraphRow("chr1", 15300, 15600, 37),
         BedGraphRow("chr1", 15600, 15800, 87),
     };
-    std::map<std::string, std::vector<uint64_t>> mm_chrom_sj;
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
@@ -144,7 +144,7 @@ TEST(SpliceTestChromOne, NoSJUsed)
         BedGraphRow("chr1", 15300, 15600, 37),
         BedGraphRow("chr1", 15600, 15800, 87),
     };
-    std::map<std::string, std::vector<uint64_t>> mm_chrom_sj;
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
@@ -174,7 +174,7 @@ TEST(SpliceTestChromOne, MiddleSJUnusedTailingSJsUsed)
         BedGraphRow("chr1", 15300, 15600, 37),
         BedGraphRow("chr1", 15600, 15800, 87),
     };
-    std::map<std::string, std::vector<uint64_t>> mm_chrom_sj;
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
@@ -206,7 +206,7 @@ TEST(SpliceTestChromOne, FirstERNotStitchedRemainingERsStitched)
         BedGraphRow("chr1", 14001, 14201, 30),
         BedGraphRow("chr1", 14999, 15300, 30),
     };
-    std::map<std::string, std::vector<uint64_t>> mm_chrom_sj;
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
     mm_chrom_sj["chr1"] = {1, 2};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
@@ -243,7 +243,7 @@ TEST(SpliceTestChromOneAndTwo, BothChrHaveMatchingSJs)
         BedGraphRow("chr1", 14999, 15300, 32),
     };
 
-    std::map<std::string, std::vector<uint64_t>> mm_chrom_sj;
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
     mm_chrom_sj["chr2"] = {1, 2};
     mm_chrom_sj["chr1"] = {3, 4};
     Integrator integrator = Integrator(0.1, 5);
@@ -429,12 +429,127 @@ TEST(SJRow, ParsesPlaceholderAnnotationColumns)
 
 // Sanity check on the size shrink. SJRow now carries exactly one std::string
 // (chrom) plus 8 + 8 + 4 + 1 + 1 bytes of trivially-copyable scalars. The
-// upstream version carried five extra std::strings; on libstdc++ that is
-// roughly +160 bytes per row, which matters at ~10M rows for full hg38.
+// upstream version carried five extra std::strings, which on libstdc++ adds
+// roughly 160 bytes per row, a meaningful cost at 10M rows for full hg38.
 TEST(SJRow, ResidentSizeBoundedToOneString)
 {
-    // Allow generous slack for std::string SSO / alignment differences across
+    // Allow generous slack for std::string SSO and alignment differences across
     // toolchains. The check is "much smaller than the legacy 6-string layout"
     // (6 * sizeof(std::string) on libstdc++ is 192 bytes by itself).
     EXPECT_LT(sizeof(SJRow), 96u);
+}
+
+
+// read_rr now keeps only rows whose chromosome is in chromosomes_set.
+// rr_all_sj is the filtered subset; sj_id_remap maps the on-disk 1-based
+// sj_id to the 1-based index in rr_all_sj, or 0 for dropped rows.
+TEST(Parser, ChrFilterRetainsOnlyRequestedRows)
+{
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_chr_filter";
+    fs::create_directories(tmp);
+    auto rr = tmp / "fake.ALL.RR";
+    {
+        std::ofstream out(rr);
+        out << "chromosome\tstart\tend\tlength\tstrand\tannotated\t"
+               "left_motif\tright_motif\tleft_annotated\tright_annotated\n";
+        out << "chr1\t100\t200\t101\t+\t1\tGT\tAG\t.\t.\n";
+        out << "chr2\t300\t400\t101\t+\t1\tGT\tAG\t.\t.\n";
+        out << "chr1\t500\t600\t101\t-\t0\tCT\tAC\t.\t.\n";
+    }
+
+    Parser parser("dummy_path", {"chr1"}, 1);
+    parser.read_rr(rr.string());
+
+    EXPECT_EQ(parser.rr_total_rows, 3u);
+    EXPECT_EQ(parser.rr_all_sj.size(), 2u);
+    ASSERT_EQ(parser.sj_id_remap.size(), 3u);
+    EXPECT_EQ(parser.sj_id_remap[0], 1u);
+    EXPECT_EQ(parser.sj_id_remap[1], 0u);
+    EXPECT_EQ(parser.sj_id_remap[2], 2u);
+    ASSERT_EQ(parser.rr_all_sj.size(), 2u);
+    EXPECT_EQ(parser.rr_all_sj[0].chrom, "chr1");
+    EXPECT_EQ(parser.rr_all_sj[0].start, 100u);
+    EXPECT_EQ(parser.rr_all_sj[1].start, 500u);
+
+    fs::remove_all(tmp);
+}
+
+
+// read_mm must skip lines whose sj_id was dropped by the chr filter, must
+// translate retained sj_ids through the remap, and must validate its header
+// against the total RR row count (not the filtered rr_all_sj size).
+TEST(Parser, MMUsesRemapAndValidatesHeaderAgainstTotalRows)
+{
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_mm_remap";
+    fs::create_directories(tmp);
+    auto rr = tmp / "fake.ALL.RR";
+    auto mm = tmp / "fake.ALL.MM";
+    {
+        std::ofstream out(rr);
+        out << "chromosome\tstart\tend\tlength\tstrand\tannotated\t"
+               "left_motif\tright_motif\tleft_annotated\tright_annotated\n";
+        out << "chr1\t100\t200\t101\t+\t1\tGT\tAG\t.\t.\n";
+        out << "chr2\t300\t400\t101\t+\t1\tGT\tAG\t.\t.\n";
+        out << "chr1\t500\t600\t101\t-\t0\tCT\tAC\t.\t.\n";
+    }
+    {
+        std::ofstream out(mm);
+        out << "%%MatrixMarket matrix coordinate integer general\n";
+        out << "%-----------------------------------------------\n";
+        out << "3\t2\t4\n";
+        out << "1\t1\t5\n";
+        out << "2\t1\t3\n";
+        out << "3\t1\t8\n";
+        out << "1\t2\t10\n";
+    }
+
+    Parser parser("dummy_path", {"chr1"}, 1);
+    parser.mm_ids = {1u, 2u};
+    parser.read_rr(rr.string());
+    parser.read_mm(mm.string());
+
+    ASSERT_TRUE(parser.mm_chrom_sj.count("chr1"));
+    EXPECT_EQ(parser.mm_chrom_sj.count("chr2"), 0u);
+    EXPECT_EQ(parser.mm_chrom_sj["chr1"].size(), 3u);
+    for (uint32_t sj_id : parser.mm_chrom_sj["chr1"]) {
+        ASSERT_LE(sj_id, parser.rr_all_sj.size());
+        EXPECT_EQ(parser.rr_all_sj[sj_id - 1].chrom, "chr1");
+    }
+
+    fs::remove_all(tmp);
+}
+
+
+// Header validation must reject an MM whose declared row count does not match
+// the RR's total row count, even when the filtered rr_all_sj is smaller.
+TEST(Parser, MMHeaderRejectsCountMismatch)
+{
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_mm_mismatch";
+    fs::create_directories(tmp);
+    auto rr = tmp / "fake.ALL.RR";
+    auto mm = tmp / "fake.ALL.MM";
+    {
+        std::ofstream out(rr);
+        out << "chromosome\tstart\tend\tlength\tstrand\tannotated\t"
+               "left_motif\tright_motif\tleft_annotated\tright_annotated\n";
+        out << "chr1\t100\t200\t101\t+\t1\tGT\tAG\t.\t.\n";
+        out << "chr2\t300\t400\t101\t+\t1\tGT\tAG\t.\t.\n";
+    }
+    {
+        std::ofstream out(mm);
+        out << "%%MatrixMarket matrix coordinate integer general\n";
+        out << "999\t1\t0\n";
+    }
+
+    Parser parser("dummy_path", {"chr1"}, 1);
+    parser.mm_ids = {1u};
+    parser.read_rr(rr.string());
+    parser.read_mm(mm.string());
+
+    EXPECT_TRUE(parser.mm_chrom_sj.empty());
+
+    fs::remove_all(tmp);
 }

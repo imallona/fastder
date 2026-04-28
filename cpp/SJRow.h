@@ -20,12 +20,12 @@ public:
     bool strand; // 1 = +, 0 = -
     bool annotated; // 0 or 1
 
-    // The recount3 RR file carries four extra columns per junction —
-    // left_motif, right_motif, left_annotated, right_annotated — that fastder
-    // reads but never accesses after parse. On full hg38 (~9.5M junctions)
-    // those strings cost ~2 GB of resident heap for nothing. We parse and
-    // discard them in operator>> below to stay format-compatible without
-    // paying the storage cost.
+    // The recount3 RR file carries four extra per-junction columns
+    // (left_motif, right_motif, left_annotated, right_annotated) that fastder
+    // reads but never accesses after parse. On full hg38 with about 9.5M
+    // junctions those strings cost roughly 2 GB of resident heap. operator>>
+    // below parses and discards them so the on-disk format stays compatible
+    // and the storage cost goes away.
 
     // constructor
     SJRow() = default;
