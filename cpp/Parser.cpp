@@ -11,13 +11,12 @@
 #include <cassert>
 #include <algorithm>
 #include <thread>
-#include <future>
+#include <atomic>
+#include <mutex>
+#include <charconv>
 #include <cstdint> // for library size which can be too large for unsigned int
 
 #include "Parser.h"
-
-#include <charconv>
-#include <filesystem>
 
 // constructor
 Parser::Parser(std::string path_, std::vector<std::string> chromosomes_, int cores_) {
@@ -419,7 +418,6 @@ void Parser::read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigne
 extern "C" {
 #include <bigWig.h>
 }
-#include <mutex>
 #endif
 
 std::vector<BedGraphRow> Parser::read_bigwig(const std::string& filename, uint64_t& library_size,

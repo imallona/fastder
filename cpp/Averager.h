@@ -36,10 +36,11 @@ class Averager {
         // BedGraphRows. Adjacent rows can be contiguous (row[i].end == row[i+1].start);
         // any uncovered region between rows is implicit zero coverage.
         std::unordered_map<std::string, std::vector<BedGraphRow>> mean_intervals;
-        // Expressed regions per chromosome, one BedGraphRow per ER. Strand on
-        // each ER is inherited from mean_intervals (currently '.' since the
-        // BigWig input is unstranded; the SJ-strand stitching that the
-        // Integrator does later is what tags the stitched ERs).
+        // Expressed regions per chromosome, one BedGraphRow per ER. The
+        // strand field is currently always '.' because the input coverage is
+        // unstranded and the stitch_up step is strand-agnostic. Stranded
+        // coverage and strand-aware stitching are planned follow-ups; the
+        // BedGraphRow / SJRow / StitchedER strand fields are already in place.
         std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
 
 

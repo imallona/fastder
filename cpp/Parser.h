@@ -6,7 +6,6 @@
 #define FASTDER_PARSE_H
 #include "SJRow.h"
 #include <unordered_map>
-#include <map>
 #include <filesystem>
 #include <fstream>
 #include <unordered_set>

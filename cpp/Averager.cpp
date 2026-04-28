@@ -4,17 +4,14 @@
 
 #include <iostream>
 #include <vector>
-#include <fstream>
-#include <sstream>
-#include <filesystem>
 #include <unordered_map>
-#include <unordered_set>
 #include <algorithm>
-#include <cassert>
+#include <thread>
+#include <atomic>
+#include <mutex>
 #include "BedGraphRow.h"
 #include "SJRow.h"
 #include "Averager.h"
-#include <future>
 
 
 Averager::Averager(int threads_)

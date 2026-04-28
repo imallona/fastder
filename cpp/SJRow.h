@@ -42,7 +42,7 @@ public:
     }
 
 
-    // overload output operator for SJRow (debug only — not part of fastder's outputs)
+    // overload output operator for SJRow (debug only, not part of fastder's outputs)
     friend std::ostream& operator<< (std::ostream& os, const SJRow& row)
     {
         return os << row.chrom << "\t" << row.start << "\t" << row.end << "\t" << row.length

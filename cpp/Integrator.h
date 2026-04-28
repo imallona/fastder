@@ -13,7 +13,6 @@
 #include <BedGraphRow.h>
 #include <chrono>
 #include <GTFRow.h>
-#include <map>
 
 class Integrator
 {
