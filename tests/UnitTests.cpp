@@ -17,8 +17,8 @@ TEST(SpliceTestChromOne, TwoStitchedERsTwoSJs)
 {
     // create splice junctions
     std::vector<SJRow> rr_all_sj = {
-        SJRow("chr1", 10500, 11000,  500, '-', false, "CT", "AC", "0", "0"), // id 1
-        SJRow("chr1", 13000, 14000, 1000, '-', false, "CT", "AC", "0", "0"), // id 2
+        SJRow("chr1", 10500, 11000,  500, '-', false), // id 1
+        SJRow("chr1", 13000, 14000, 1000, '-', false), // id 2
     };
 
     // create expressed regions map
@@ -43,9 +43,9 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJs)
 {
     // create splice junctions
     std::vector<SJRow> rr_all_sj = {
-        SJRow("chr1", 10500, 11000,  500, '-', false, "CT", "AC", "0", "0"), // id 1
-        SJRow("chr1", 13000, 14000, 1000, '-', false, "CT", "AC", "0", "0"), // id 2
-        SJRow("chr1", 14200, 15000, 800, '-', false, "CT", "AC", "0", "0")  // id 3
+        SJRow("chr1", 10500, 11000,  500, '-', false), // id 1
+        SJRow("chr1", 13000, 14000, 1000, '-', false), // id 2
+        SJRow("chr1", 14200, 15000, 800, '-', false)  // id 3
     };
 
     // create expressed regions map
@@ -70,9 +70,9 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJsAndTailingER)
 {
     // create splice junctions
     std::vector<SJRow> rr_all_sj = {
-        SJRow("chr1", 10500, 11000,  500, '-', false, "CT", "AC", "0", "0"), // id 1
-        SJRow("chr1", 13000, 14000, 1000, '-', false, "CT", "AC", "0", "0"), // id 2
-        SJRow("chr1", 14200, 15000, 800, '-', false, "CT", "AC", "0", "0")  // id 3
+        SJRow("chr1", 10500, 11000,  500, '-', false), // id 1
+        SJRow("chr1", 13000, 14000, 1000, '-', false), // id 2
+        SJRow("chr1", 14200, 15000, 800, '-', false)  // id 3
     };
 
     // create expressed regions map
@@ -98,9 +98,9 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJsAndTwoTailingERs)
 {
     // create splice junctions
     std::vector<SJRow> rr_all_sj = {
-        SJRow("chr1", 10500, 11000,  500, '-', false, "CT", "AC", "0", "0"), // id 1
-        SJRow("chr1", 13000, 14000, 1000, '-', false, "CT", "AC", "0", "0"), // id 2
-        SJRow("chr1", 14200, 15000, 800, '-', false, "CT", "AC", "0", "0")  // id 3
+        SJRow("chr1", 10500, 11000,  500, '-', false), // id 1
+        SJRow("chr1", 13000, 14000, 1000, '-', false), // id 2
+        SJRow("chr1", 14200, 15000, 800, '-', false)  // id 3
     };
 
     // create expressed regions map
@@ -128,9 +128,9 @@ TEST(SpliceTestChromOne, NoSJUsed)
 {
     // create splice junctions
     std::vector<SJRow> rr_all_sj = {
-        SJRow("chr1", 500, 1000,  500, '-', false, "CT", "AC", "0", "0"), // id 1
-        SJRow("chr1", 12000, 13000, 1000, '-', false, "CT", "AC", "0", "0"), // id 2
-        SJRow("chr1", 15300, 15400, 100, '-', false, "CT", "AC", "0", "0")  // id 3
+        SJRow("chr1", 500, 1000,  500, '-', false), // id 1
+        SJRow("chr1", 12000, 13000, 1000, '-', false), // id 2
+        SJRow("chr1", 15300, 15400, 100, '-', false)  // id 3
     };
 
     // create expressed regions map
@@ -158,9 +158,9 @@ TEST(SpliceTestChromOne, MiddleSJUnusedTailingSJsUsed)
 {
     // create splice junctions
     std::vector<SJRow> rr_all_sj = {
-        SJRow("chr1", 10500, 11000,  500, '-', false, "CT", "AC", "0", "0"), // id 1
-        SJRow("chr1", 12000, 13000, 1000, '-', false, "CT", "AC", "0", "0"), // id 2
-        SJRow("chr1", 14200, 15000, 800, '-', false, "CT", "AC", "0", "0")  // id 3
+        SJRow("chr1", 10500, 11000,  500, '-', false), // id 1
+        SJRow("chr1", 12000, 13000, 1000, '-', false), // id 2
+        SJRow("chr1", 14200, 15000, 800, '-', false)  // id 3
     };
 
     // create expressed regions map
@@ -193,8 +193,8 @@ TEST(SpliceTestChromOne, FirstERNotStitchedRemainingERsStitched)
 {
     // create splice junctions
     std::vector<SJRow> rr_all_sj = {
-        SJRow("chr1", 10500, 11000,  500, '-', false, "CT", "AC", "0", "0"), // id 1
-        SJRow("chr1", 14200, 15000, 800, '-', false, "CT", "AC", "0", "0")  // id 3
+        SJRow("chr1", 10500, 11000,  500, '-', false), // id 1
+        SJRow("chr1", 14200, 15000, 800, '-', false)  // id 3
     };
 
     // create expressed regions map
@@ -224,10 +224,10 @@ TEST(SpliceTestChromOneAndTwo, BothChrHaveMatchingSJs)
 {
     // create splice junctions (ordered within a chromosome but NOT ordered by chromosome!
     std::vector<SJRow> rr_all_sj = {
-        SJRow("chr2", 1000, 1500,  500, '-', false, "CT", "AC", "0", "0"), // id 1
-        SJRow("chr2", 3000, 3800, 800, '-', false, "CT", "AC", "0", "0"),  // id 3
-        SJRow("chr1", 10500, 11000,  500, '-', false, "CT", "AC", "0", "0"), // id 1
-        SJRow("chr1", 14200, 15000, 800, '-', false, "CT", "AC", "0", "0")  // id 3
+        SJRow("chr2", 1000, 1500,  500, '-', false), // id 1
+        SJRow("chr2", 3000, 3800, 800, '-', false),  // id 3
+        SJRow("chr1", 10500, 11000,  500, '-', false), // id 1
+        SJRow("chr1", 14200, 15000, 800, '-', false)  // id 3
     };
 
     // create expressed regions map
@@ -382,4 +382,59 @@ TEST(Parser, DateFormatInGTF)
 
     std::cout << date;
 
+}
+
+
+// SJRow no longer stores left_motif / right_motif / left_annotated /
+// right_annotated. operator>> must still consume those four columns from a
+// recount3-formatted RR line so existing inputs continue to parse, but only
+// the six load-bearing fields end up in the struct.
+TEST(SJRow, ParsesAndDiscardsUnusedRRColumns)
+{
+    std::istringstream iss(
+        "chr1\t143465342\t143470614\t5273\t-\t1\tCT\tAC\tcH38,gC24\taC19,cH38");
+    SJRow row;
+    iss >> row;
+
+    EXPECT_TRUE(iss.good() || iss.eof());
+    EXPECT_EQ(row.chrom, "chr1");
+    EXPECT_EQ(row.start, 143465342u);
+    EXPECT_EQ(row.end, 143470614u);
+    EXPECT_EQ(row.length, 5273u);
+    EXPECT_FALSE(row.strand);  // '-' -> false
+    EXPECT_TRUE(row.annotated);
+
+    // Must have consumed all ten whitespace-separated tokens; nothing is left
+    // for a follow-up record on the same stream
+    std::string leftover;
+    iss >> leftover;
+    EXPECT_TRUE(leftover.empty());
+}
+
+
+// Empty / placeholder annotation columns must also parse cleanly, since
+// monorail_light emits "." for left_annotated / right_annotated.
+TEST(SJRow, ParsesPlaceholderAnnotationColumns)
+{
+    std::istringstream iss("chr21\t100\t200\t101\t+\t0\tGT\tAG\t.\t.");
+    SJRow row;
+    iss >> row;
+    EXPECT_EQ(row.chrom, "chr21");
+    EXPECT_EQ(row.start, 100u);
+    EXPECT_EQ(row.end, 200u);
+    EXPECT_TRUE(row.strand);   // '+'
+    EXPECT_FALSE(row.annotated);
+}
+
+
+// Sanity check on the size shrink. SJRow now carries exactly one std::string
+// (chrom) plus 8 + 8 + 4 + 1 + 1 bytes of trivially-copyable scalars. The
+// upstream version carried five extra std::strings; on libstdc++ that is
+// roughly +160 bytes per row, which matters at ~10M rows for full hg38.
+TEST(SJRow, ResidentSizeBoundedToOneString)
+{
+    // Allow generous slack for std::string SSO / alignment differences across
+    // toolchains. The check is "much smaller than the legacy 6-string layout"
+    // (6 * sizeof(std::string) on libstdc++ is 192 bytes by itself).
+    EXPECT_LT(sizeof(SJRow), 96u);
 }
