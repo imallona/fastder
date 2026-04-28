@@ -329,9 +329,9 @@ TEST(Parser, TestWrongChromosomeOrder)
     Parser parser = Parser(directory, chromosomes, cores);
     parser.search_directory();
 
-    // get mean coverage vector
+    // get mean coverage as sparse intervals
     Averager averager(cores);
-    averager.compute_mean_coverage(parser.all_per_base_coverages);
+    averager.compute_mean_coverage(parser.all_bedgraphs);
 
     // get expressed regions
     averager.find_ERs(coverage_threshold, min_length);
@@ -552,4 +552,462 @@ TEST(Parser, MMHeaderRejectsCountMismatch)
     EXPECT_TRUE(parser.mm_chrom_sj.empty());
 
     fs::remove_all(tmp);
+}
+
+
+// =====================================================================
+// BedGraphRow strand field
+// =====================================================================
+
+TEST(BedGraphRow, DefaultStrandIsUnstranded)
+{
+    BedGraphRow row("chr1", 100, 200, 5.0);
+    EXPECT_EQ(row.strand, '.');
+}
+
+TEST(BedGraphRow, ExplicitStrandIsStored)
+{
+    BedGraphRow plus("chr1", 100, 200, 5.0, '+');
+    BedGraphRow minus("chr1", 100, 200, 5.0, '-');
+    EXPECT_EQ(plus.strand,  '+');
+    EXPECT_EQ(minus.strand, '-');
+}
+
+
+// =====================================================================
+// Averager::compute_mean_coverage on sparse intervals
+// =====================================================================
+
+// The sparse mean of a single sample equals the sample's own intervals.
+// Adjacent intervals with the same coverage are coalesced.
+TEST(Averager, SparseMeanSingleSampleIsIdentity)
+{
+    std::vector<std::vector<BedGraphRow>> all_bedgraphs(1);
+    all_bedgraphs[0] = {
+        BedGraphRow("chr1", 100, 200, 4.0),
+        BedGraphRow("chr1", 200, 300, 4.0),  // contiguous, same coverage -> coalesced
+        BedGraphRow("chr1", 400, 500, 8.0),
+    };
+
+    Averager avg(1);
+    avg.compute_mean_coverage(all_bedgraphs);
+
+    ASSERT_TRUE(avg.mean_intervals.count("chr1"));
+    const auto& m = avg.mean_intervals["chr1"];
+    ASSERT_EQ(m.size(), 2u);
+    EXPECT_EQ(m[0].start, 100u);
+    EXPECT_EQ(m[0].end,   300u);
+    EXPECT_DOUBLE_EQ(m[0].coverage, 4.0);
+    EXPECT_EQ(m[1].start, 400u);
+    EXPECT_EQ(m[1].end,   500u);
+    EXPECT_DOUBLE_EQ(m[1].coverage, 8.0);
+}
+
+// Two samples with overlapping intervals: the union of breakpoints partitions
+// the chromosome and each segment carries the per-sample average.
+TEST(Averager, SparseMeanTwoOverlappingSamples)
+{
+    std::vector<std::vector<BedGraphRow>> all_bedgraphs(2);
+    all_bedgraphs[0] = { BedGraphRow("chr1", 100, 300, 10.0) };
+    all_bedgraphs[1] = { BedGraphRow("chr1", 200, 400, 20.0) };
+
+    Averager avg(1);
+    avg.compute_mean_coverage(all_bedgraphs);
+
+    ASSERT_TRUE(avg.mean_intervals.count("chr1"));
+    const auto& m = avg.mean_intervals["chr1"];
+    // expected segments: [100,200) cov=10/2=5, [200,300) cov=(10+20)/2=15, [300,400) cov=20/2=10
+    ASSERT_EQ(m.size(), 3u);
+    EXPECT_EQ(m[0].start, 100u);  EXPECT_EQ(m[0].end, 200u);
+    EXPECT_DOUBLE_EQ(m[0].coverage, 5.0);
+    EXPECT_EQ(m[1].start, 200u);  EXPECT_EQ(m[1].end, 300u);
+    EXPECT_DOUBLE_EQ(m[1].coverage, 15.0);
+    EXPECT_EQ(m[2].start, 300u);  EXPECT_EQ(m[2].end, 400u);
+    EXPECT_DOUBLE_EQ(m[2].coverage, 10.0);
+}
+
+// A sample with no coverage on a chromosome contributes 0 to every segment.
+TEST(Averager, SparseMeanSampleAbsentFromChromContributesZero)
+{
+    std::vector<std::vector<BedGraphRow>> all_bedgraphs(2);
+    all_bedgraphs[0] = { BedGraphRow("chr1", 100, 200, 10.0) };
+    all_bedgraphs[1] = { BedGraphRow("chr2", 100, 200, 30.0) };
+
+    Averager avg(1);
+    avg.compute_mean_coverage(all_bedgraphs);
+
+    ASSERT_TRUE(avg.mean_intervals.count("chr1"));
+    ASSERT_TRUE(avg.mean_intervals.count("chr2"));
+    const auto& m1 = avg.mean_intervals["chr1"];
+    const auto& m2 = avg.mean_intervals["chr2"];
+    ASSERT_EQ(m1.size(), 1u);
+    ASSERT_EQ(m2.size(), 1u);
+    EXPECT_DOUBLE_EQ(m1[0].coverage, 5.0);   // 10 / 2 samples
+    EXPECT_DOUBLE_EQ(m2[0].coverage, 15.0);  // 30 / 2 samples
+}
+
+// A gap between intervals is implicit zero coverage, not a continuation.
+TEST(Averager, SparseMeanGapIsImplicitZero)
+{
+    std::vector<std::vector<BedGraphRow>> all_bedgraphs(1);
+    all_bedgraphs[0] = {
+        BedGraphRow("chr1", 100, 200, 10.0),
+        BedGraphRow("chr1", 500, 600, 10.0),
+    };
+
+    Averager avg(1);
+    avg.compute_mean_coverage(all_bedgraphs);
+
+    const auto& m = avg.mean_intervals["chr1"];
+    ASSERT_EQ(m.size(), 2u);
+    EXPECT_EQ(m[0].end,   200u);
+    EXPECT_EQ(m[1].start, 500u);
+}
+
+
+// =====================================================================
+// Averager::find_ERs on sparse intervals
+// =====================================================================
+
+// One contiguous run above threshold -> one ER spanning the full run.
+TEST(Averager, FindERsSimpleRun)
+{
+    Averager avg(1);
+    avg.chroms = {"chr1"};
+    avg.mean_intervals["chr1"] = {
+        BedGraphRow("chr1", 100, 200, 10.0),
+        BedGraphRow("chr1", 200, 300, 10.0),
+    };
+
+    avg.find_ERs(1.0, 5);
+    const auto& ers = avg.expressed_regions["chr1"];
+    ASSERT_EQ(ers.size(), 1u);
+    EXPECT_EQ(ers[0].start, 100u);
+    EXPECT_EQ(ers[0].end,   300u);
+}
+
+// A below-threshold interval breaks the run.
+TEST(Averager, FindERsBelowThresholdBreaksRun)
+{
+    Averager avg(1);
+    avg.chroms = {"chr1"};
+    avg.mean_intervals["chr1"] = {
+        BedGraphRow("chr1", 100, 200, 10.0),
+        BedGraphRow("chr1", 200, 250, 0.1),
+        BedGraphRow("chr1", 250, 350, 10.0),
+    };
+
+    avg.find_ERs(1.0, 5);
+    const auto& ers = avg.expressed_regions["chr1"];
+    ASSERT_EQ(ers.size(), 2u);
+    EXPECT_EQ(ers[0].start, 100u);  EXPECT_EQ(ers[0].end, 200u);
+    EXPECT_EQ(ers[1].start, 250u);  EXPECT_EQ(ers[1].end, 350u);
+}
+
+// A coverage gap (non-contiguous intervals) also breaks the run, even when
+// both flanks are above threshold.
+TEST(Averager, FindERsGapBreaksRun)
+{
+    Averager avg(1);
+    avg.chroms = {"chr1"};
+    avg.mean_intervals["chr1"] = {
+        BedGraphRow("chr1", 100, 200, 10.0),
+        BedGraphRow("chr1", 500, 600, 10.0),
+    };
+
+    avg.find_ERs(1.0, 5);
+    const auto& ers = avg.expressed_regions["chr1"];
+    ASSERT_EQ(ers.size(), 2u);
+}
+
+// min_length filters short ERs even if they cleared the coverage threshold.
+TEST(Averager, FindERsMinLengthFilters)
+{
+    Averager avg(1);
+    avg.chroms = {"chr1"};
+    avg.mean_intervals["chr1"] = {
+        BedGraphRow("chr1", 100, 102, 10.0),  // length 2, below min_length
+        BedGraphRow("chr1", 500, 600, 10.0),  // length 100, kept
+    };
+
+    avg.find_ERs(1.0, 5);
+    const auto& ers = avg.expressed_regions["chr1"];
+    ASSERT_EQ(ers.size(), 1u);
+    EXPECT_EQ(ers[0].start, 500u);
+}
+
+
+// =====================================================================
+// Integrator strand-aware stitch_up
+// =====================================================================
+
+// Each ER appears in stitched_ERs exactly once: ERs that participate in a
+// chain are tagged with that chain's strand, ERs left over come back with '.'.
+TEST(Integrator, StitchUpSinglePlusChain)
+{
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11000, 500, '+', false), // sj_id 1, strand=true
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10500, 100.0),
+        BedGraphRow("chr1", 11000, 12500, 101.0),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1};
+
+    Integrator integrator(0.1, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    ASSERT_EQ(integrator.stitched_ERs.size(), 1u);
+    EXPECT_EQ(integrator.stitched_ERs[0].strand, '+');
+    EXPECT_EQ(integrator.stitched_ERs[0].er_ids.size(), 3u);
+}
+
+TEST(Integrator, StitchUpSingleMinusChain)
+{
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11000, 500, '-', false), // sj_id 1, strand=false
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10500, 100.0),
+        BedGraphRow("chr1", 11000, 12500, 101.0),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1};
+
+    Integrator integrator(0.1, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    ASSERT_EQ(integrator.stitched_ERs.size(), 1u);
+    EXPECT_EQ(integrator.stitched_ERs[0].strand, '-');
+}
+
+// An ER that no SJ stitches must be emitted exactly once with strand '.'.
+TEST(Integrator, StitchUpUnstitchedERIsEmittedOnceUnstranded)
+{
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11000, 500, '+', false),
+        SJRow("chr1", 20500, 21000, 500, '-', false),
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10500, 100.0),    // chain start (+ pass)
+        BedGraphRow("chr1", 11000, 12500, 101.0),    // chain extension
+        BedGraphRow("chr1", 13000, 14000, 5.0),      // unstitched gap
+        BedGraphRow("chr1", 20000, 20500, 50.0),     // chain start (- pass)
+        BedGraphRow("chr1", 21000, 22000, 50.0),     // chain extension
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1, 2};
+
+    Integrator integrator(0.1, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    // Expect: + chain (ERs 0,1), unstranded standalone (ER 2), - chain (ERs 3,4)
+    ASSERT_EQ(integrator.stitched_ERs.size(), 3u);
+
+    int unstranded_count = 0;
+    int plus_count       = 0;
+    int minus_count      = 0;
+    for (const auto& ser : integrator.stitched_ERs)
+    {
+        if (ser.strand == '.') ++unstranded_count;
+        if (ser.strand == '+') ++plus_count;
+        if (ser.strand == '-') ++minus_count;
+    }
+    EXPECT_EQ(unstranded_count, 1);
+    EXPECT_EQ(plus_count,       1);
+    EXPECT_EQ(minus_count,      1);
+}
+
+// stitched_ERs must be sorted by start within a chromosome regardless of which
+// strand pass produced them, since write_to_gtf relies on genomic order.
+TEST(Integrator, StitchUpEmitsInGenomicOrder)
+{
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 20500, 21000, 500, '+', false),  // late + chain
+        SJRow("chr1", 10500, 11000, 500, '-', false),  // early - chain
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10500, 50.0),
+        BedGraphRow("chr1", 11000, 12000, 50.0),
+        BedGraphRow("chr1", 20000, 20500, 100.0),
+        BedGraphRow("chr1", 21000, 22000, 100.0),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1, 2};
+
+    Integrator integrator(0.1, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    ASSERT_EQ(integrator.stitched_ERs.size(), 2u);
+    // first by genomic order is the - chain (ER 0..1)
+    EXPECT_EQ(integrator.stitched_ERs[0].start, 10000u);
+    EXPECT_EQ(integrator.stitched_ERs[0].strand, '-');
+    EXPECT_EQ(integrator.stitched_ERs[1].start, 20000u);
+    EXPECT_EQ(integrator.stitched_ERs[1].strand, '+');
+}
+
+
+// =====================================================================
+// libBigWig integration (gated). These run only when fastder is built with
+// -DFASTDER_USE_LIBBIGWIG=ON; otherwise they GTEST_SKIP so the unbuilt code
+// path does not block local development.
+// =====================================================================
+
+#ifdef FASTDER_USE_LIBBIGWIG
+extern "C" {
+#include <bigWig.h>
+}
+
+// Helper: write a tiny BigWig at path with the supplied chromosome name,
+// chromosome length and triples of (start, end, value). Uses libBigWig's
+// bedGraph-style interval writer, which is the most permissive of its three
+// emission modes and the closest match to what bedtools genomecov produces.
+static void write_test_bigwig(const std::string& path,
+                              const std::string& chrom,
+                              uint32_t chrom_len,
+                              const std::vector<std::tuple<uint32_t, uint32_t, float>>& intervals)
+{
+    bwInit(1 << 17);
+    bigWigFile_t* fp = bwOpen(const_cast<char*>(path.c_str()), nullptr, "w");
+    ASSERT_NE(fp, nullptr) << "Could not open BigWig for write: " << path;
+    ASSERT_EQ(bwCreateHdr(fp, 10), 0);
+
+    char* chrom_array[1] = { const_cast<char*>(chrom.c_str()) };
+    uint32_t lens[1] = { chrom_len };
+    fp->cl = bwCreateChromList(chrom_array, lens, 1);
+    ASSERT_NE(fp->cl, nullptr);
+    ASSERT_EQ(bwWriteHdr(fp), 0);
+
+    std::vector<char*> chr_buf(intervals.size(), const_cast<char*>(chrom.c_str()));
+    std::vector<uint32_t> starts(intervals.size());
+    std::vector<uint32_t> ends(intervals.size());
+    std::vector<float>    values(intervals.size());
+    for (size_t i = 0; i < intervals.size(); ++i)
+    {
+        starts[i] = std::get<0>(intervals[i]);
+        ends[i]   = std::get<1>(intervals[i]);
+        values[i] = std::get<2>(intervals[i]);
+    }
+    ASSERT_EQ(bwAddIntervals(fp,
+                             chr_buf.data(),
+                             starts.data(),
+                             ends.data(),
+                             values.data(),
+                             static_cast<uint32_t>(intervals.size())), 0);
+    bwClose(fp);
+}
+#endif
+
+
+// Round-trip: write a small BigWig with libBigWig, read it through
+// Parser::read_bigwig, assert intervals come back identical.
+TEST(BigWig, RoundTripParsesWrittenIntervals)
+{
+#ifndef FASTDER_USE_LIBBIGWIG
+    GTEST_SKIP() << "libBigWig support is off; rebuild with -DFASTDER_USE_LIBBIGWIG=ON";
+#else
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_bw_roundtrip";
+    fs::create_directories(tmp);
+    auto bw_path = (tmp / "tiny.bw").string();
+
+    // intervals: (start, end, value)
+    const std::vector<std::tuple<uint32_t, uint32_t, float>> intervals = {
+        {100, 200, 10.0f},
+        {200, 300, 0.0f},
+        {300, 500, 25.0f},
+    };
+    write_test_bigwig(bw_path, "chr1", 1000, intervals);
+
+    Parser parser("dummy_path", {"chr1"}, 1);
+    uint64_t library_size = 0;
+    auto rows = parser.read_bigwig(bw_path, library_size, '.');
+
+    ASSERT_EQ(rows.size(), intervals.size());
+    for (size_t i = 0; i < rows.size(); ++i)
+    {
+        EXPECT_EQ(rows[i].chrom, "chr1");
+        EXPECT_EQ(rows[i].start, std::get<0>(intervals[i]));
+        EXPECT_EQ(rows[i].end,   std::get<1>(intervals[i]));
+        EXPECT_FLOAT_EQ(static_cast<float>(rows[i].coverage), std::get<2>(intervals[i]));
+        EXPECT_EQ(rows[i].strand, '.');
+    }
+
+    fs::remove_all(tmp);
+#endif
+}
+
+
+// Equivalence: feed the same coverage through read_bedgraph and read_bigwig
+// and assert that compute_mean_coverage and find_ERs produce identical
+// expressed_regions on both. This is the regression guard for "BedGraph and
+// BigWig must yield the same fastder output for the same data".
+TEST(BigWig, BedGraphAndBigWigEquivalentExpressedRegions)
+{
+#ifndef FASTDER_USE_LIBBIGWIG
+    GTEST_SKIP() << "libBigWig support is off; rebuild with -DFASTDER_USE_LIBBIGWIG=ON";
+#else
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_bw_equiv";
+    fs::create_directories(tmp);
+    auto bw_path = (tmp / "sample.bw").string();
+    auto bg_path = (tmp / "sample.bedGraph").string();
+
+    const std::vector<std::tuple<uint32_t, uint32_t, float>> intervals = {
+        {100, 300, 10.0f},
+        {300, 400, 0.5f},   // below the 1.0 threshold used in find_ERs
+        {400, 700, 10.0f},
+    };
+    write_test_bigwig(bw_path, "chr1", 1000, intervals);
+    {
+        std::ofstream out(bg_path);
+        for (const auto& [s, e, v] : intervals)
+        {
+            out << "chr1\t" << s << '\t' << e << '\t' << v << '\n';
+        }
+    }
+
+    auto run_pipeline = [&](const std::string& cov_path)
+    {
+        Parser parser("dummy_path", {"chr1"}, 1);
+        uint64_t library_size = 0;
+        std::vector<BedGraphRow> rows;
+        if (cov_path.size() >= 3 && cov_path.substr(cov_path.size() - 3) == ".bw")
+        {
+            rows = parser.read_bigwig(cov_path, library_size, '.');
+        }
+        else
+        {
+            rows = parser.read_bedgraph(cov_path, library_size);
+        }
+        // Note: skipping normalize() so the comparison is on raw coverage; the
+        // two readers must produce identical raw values for the test to be
+        // meaningful.
+        std::vector<std::vector<BedGraphRow>> all_bedgraphs(1);
+        all_bedgraphs[0] = std::move(rows);
+
+        Averager avg(1);
+        avg.compute_mean_coverage(all_bedgraphs);
+        avg.find_ERs(1.0, 5);
+        return avg.expressed_regions["chr1"];
+    };
+
+    auto from_bw = run_pipeline(bw_path);
+    auto from_bg = run_pipeline(bg_path);
+
+    ASSERT_EQ(from_bw.size(), from_bg.size());
+    for (size_t i = 0; i < from_bw.size(); ++i)
+    {
+        EXPECT_EQ(from_bw[i].start, from_bg[i].start);
+        EXPECT_EQ(from_bw[i].end,   from_bg[i].end);
+        EXPECT_DOUBLE_EQ(from_bw[i].coverage, from_bg[i].coverage);
+    }
+
+    fs::remove_all(tmp);
+#endif
 }

@@ -128,9 +128,9 @@ int main(int argc, char* argv[]) {
     std::chrono::duration<double> elapsed_parsing = end_parsing - start;
     std::cout << "[INFO] Parsing took " << elapsed_parsing.count() << " seconds.\n \n";
 
-    // get mean coverage vector
+    // get mean coverage as sparse intervals (no dense per-base expansion)
     Averager averager(cores);
-    averager.compute_mean_coverage(parser.all_per_base_coverages);
+    averager.compute_mean_coverage(parser.all_bedgraphs);
 
     averager.find_ERs(min_coverage, min_length);
 

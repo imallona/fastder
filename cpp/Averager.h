@@ -17,19 +17,30 @@ class Averager {
 
     public:
         Averager(int threads_);
-        void compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages);
+        // Compute the per-chromosome mean coverage as a sparse interval list
+        // by sweep-merging the per-sample interval lists. The previous
+        // implementation built a dense per-base vector<double> per chromosome
+        // per sample; on full hg38 that grew to ~24 GB per sample. The sweep
+        // produces only as many output intervals as the union of breakpoints
+        // across samples requires, with zero coverage segments suppressed.
+        void compute_mean_coverage(std::vector<std::vector<BedGraphRow>>& all_bedgraphs);
+        // Walk the sparse mean_intervals and emit one BedGraphRow per
+        // expressed region: a maximal contiguous run of intervals all above
+        // threshold. min_length is in nucleotides on the reference.
         void find_ERs(double threshold, int min_length);
 
-        // matrix consisting of multiple vectors, where each row in a vector is of type BedGraphRow,
-        // a BedGraphRow is a bin of nucleotides with the same read count
-        // a vector of BedGraphRows corresponds to one sample
-        //matrix where each vector contains the normalized count per base from ONE sample
         int nof_threads;
         std::vector<std::string> chroms;
         std::mutex map_mutex;
-        std::unordered_map<std::string, std::vector<double>> mean_coverage; //key = chromosome, value = vector of per-base mean coverage of this chromosome
-        std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions; //key = chromosome, value = vector of BedGraphRows with coverage > threshold
-        // store all the individual sample maps in a vector (since sample identity doesn't matter anymore later on)
+        // Mean coverage per chromosome as a sorted, non-overlapping list of
+        // BedGraphRows. Adjacent rows can be contiguous (row[i].end == row[i+1].start);
+        // any uncovered region between rows is implicit zero coverage.
+        std::unordered_map<std::string, std::vector<BedGraphRow>> mean_intervals;
+        // Expressed regions per chromosome, one BedGraphRow per ER. Strand on
+        // each ER is inherited from mean_intervals (currently '.' since the
+        // BigWig input is unstranded; the SJ-strand stitching that the
+        // Integrator does later is what tags the stitched ERs).
+        std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
 
 
 

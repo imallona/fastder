@@ -9,9 +9,18 @@
 #include <cstdint>
 
 
-// constructor with arguments
+// constructor with arguments. Coverage rows are unstranded by default since the
+// monorail-style BigWig the workflow emits is not strand-resolved.
 BedGraphRow::BedGraphRow(std::string _chrom, uint64_t _start, uint64_t _end, double _coverage) : chrom(_chrom),
-    start(_start), end(_end), coverage(_coverage), total_reads(0), length(_end - _start)
+    start(_start), end(_end), coverage(_coverage), total_reads(0), length(_end - _start), strand('.')
+{
+}
+
+// constructor for stranded BigWig input. _strand is '+' or '-'; '.' means
+// unstranded (the BigWig contained reads from both strands).
+BedGraphRow::BedGraphRow(std::string _chrom, uint64_t _start, uint64_t _end, double _coverage, char _strand) :
+    chrom(_chrom), start(_start), end(_end), coverage(_coverage), total_reads(0),
+    length(_end - _start), strand(_strand)
 {
 }
 

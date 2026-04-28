@@ -21,20 +21,29 @@ public:
     // read in individual file types
     void read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigned int nof_threads);
     std::vector<BedGraphRow> read_bedgraph(const std::string& filename, uint64_t& library_size) const;
+    // Parse a BigWig file into the same sparse interval representation we use
+    // for BedGraph. _strand is stamped on every emitted row ('.' = unstranded,
+    // '+' / '-' for stranded BigWigs). Implementation is gated on the CMake
+    // option FASTDER_USE_LIBBIGWIG. Without that flag the function logs an
+    // error and returns an empty vector, which keeps the build hermetic.
+    std::vector<BedGraphRow> read_bigwig(const std::string& filename, uint64_t& library_size,
+                                         char strand = '.') const;
     void read_mm(std::string filename);
     void read_rr(std::string filename);
     void read_url_csv(std::string filename);
     void fill_up(std::vector<std::string> bedgraph_files);
-
-    static void compute_per_base_coverage(const BedGraphRow& row, std::unordered_map<std::string, std::vector<double>>& per_base_coverage);
 
     // TODO add function get_rail_id_from_filename(filename)?
     unsigned int user_cores;
     std::string path;
     std::vector<std::string> chromosomes_vec; // for fast iteration
     std::unordered_set<std::string> chromosomes_set; // for fast check if chromosome is included
-    std::vector<std::vector<BedGraphRow>> all_bedgraphs; //TODO maybe change to unordered map with key = sample id, value = bedgraph of the sample?
-    std::vector<std::unordered_map<std::string, std::vector<double>>> all_per_base_coverages; //NOT ordered by chromosomes
+    // Per-sample sparse interval coverage. Element s is the BedGraph or BigWig
+    // content of sample s, sorted by (chrom, start). This is the only coverage
+    // representation fastder keeps in memory; the dense per-base expansion
+    // that the previous version computed has been removed since
+    // compute_mean_coverage and find_ERs now operate on intervals directly.
+    std::vector<std::vector<BedGraphRow>> all_bedgraphs;
     // RR rows on chromosomes the user requested. Dropped rows are not stored.
     std::vector<SJRow> rr_all_sj;
 

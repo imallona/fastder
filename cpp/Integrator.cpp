@@ -3,6 +3,7 @@
 //
 
 #include <cassert>
+#include <algorithm>
 #include <Integrator.h>
 
 // constructor
@@ -42,69 +43,163 @@ bool Integrator::sj_too_far_back(const uint64_t most_recent_er_end, const uint64
     && !within_threshold(most_recent_er_end, sj_start);
 }
 
-void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::unordered_map<std::string, std::vector<uint32_t>>& mm_chrom_sj, const std::vector<SJRow>& rr_all_sj)
+// Build chains of ERs connected by SJs of one strand, and append the
+// chains of length 2 or more to stitched_ERs (tagged with that strand).
+// Single-ER candidates produced along the way are not emitted here; the
+// caller is responsible for emitting unstitched ERs once with strand '.'.
+//
+// Algorithm: walk the chromosome's ERs left to right. Keep a candidate chain
+// in progress. For each new ER, try to extend the candidate via the next
+// available SJ on this strand. If the SJ matches (coverage and position), the
+// chain grows; otherwise the candidate is closed (emitted only if it has 2+
+// ERs) and a fresh candidate is seeded with the current ER. Indices of any
+// ERs that wound up inside an emitted chain are added to consumed_indices.
+void Integrator::stitch_one_strand(const std::string& chrom,
+                                   char strand,
+                                   const std::vector<uint32_t>& strand_sjs,
+                                   const std::vector<BedGraphRow>& ers,
+                                   const std::vector<SJRow>& rr_all_sj,
+                                   std::unordered_set<int>& consumed_indices,
+                                   std::vector<StitchedER>& output)
 {
-    // iterate over chromosomes and sj_ids -> sjs.first = chrom, sjs.second = vector<sj_id>
-    for (auto& sjs : mm_chrom_sj)
+    if (ers.empty() || strand_sjs.empty()) return;
+
+    auto sj_it = strand_sjs.begin();
+
+    StitchedER candidate(ers[0], 0);
+    candidate.strand = strand;
+    bool have_candidate = true;
+
+    auto close_candidate = [&]()
     {
-        //std::cout << "[INFO] Stitching chromosome " << sjs.first << std::endl;
-        std::string chrom = sjs.first;
-        StitchedER er1 = StitchedER(expressed_regions.at(chrom).at(0), 0); // define the first StitchedER, currently consisting of 1 ER
-        stitched_ERs.emplace_back(er1);
-        auto current_sj_id = sjs.second.begin(); // iterator over the vector of sj_id
-
-        int max_stitched_ers = 0;
-        int nof_stitched_ers = 0;
-        // iterate over expressed regions starting with region 2 (since region 1 was already appended)
-        for (int i = 1; i < expressed_regions.at(chrom).size(); ++i)
+        // a chain has been extended at least once when er_ids has more than the seed entry
+        if (candidate.er_ids.size() > 1)
         {
-            const auto& expressed_region = expressed_regions[chrom][i];
-            //only compare if we aren't at the last SJ yet
-            if (current_sj_id != sjs.second.end()){
-                StitchedER& current_stitched_er = stitched_ERs.back(); // this is one expressed region right now
-
-                // skip ahead to SJ with coordinates that line up with the most recent ER
-                while (current_sj_id != sjs.second.end()
-                    && (current_stitched_er.end > rr_all_sj[*current_sj_id - 1].start && !within_threshold(current_stitched_er.end, rr_all_sj[*current_sj_id - 1].start))
-                    && rr_all_sj[*current_sj_id - 1].chrom == chrom)
-                {
-                    ++current_sj_id;
-                }
-                // make sure to never dereference the end() pointer
-                if (current_sj_id == sjs.second.end())
-                {
-                    --current_sj_id;
-                }
-                // get rr_all_sj, which is a vector of SJRows
-                if (is_similar(current_stitched_er, expressed_region, rr_all_sj[*current_sj_id - 1]))
-                {
-                    uint64_t sj_length = expressed_region.start - expressed_regions[chrom][current_stitched_er.er_ids.back()].end; // always use ER coordinates since a small mismatch of SJ and ER coordinates is tolerated
-                    current_stitched_er.append(-1, sj_length, 0.0);  // append the spliced region and the intron
-                    current_stitched_er.append(i, expressed_region.length, expressed_region.coverage);
-                    ++nof_stitched_ers;
-                    // move to next SJ
-                    ++current_sj_id;
-
-                    // find maximum number of ERs that were stitched together
-                    if (max_stitched_ers < nof_stitched_ers)
-                    {
-                        max_stitched_ers = nof_stitched_ers;
-                    }
-                }
-                // current ER doesn't belong to any existing ERs --> start a new ER
-                else
-                {
-                    nof_stitched_ers = 1; // reset counter
-                    stitched_ERs.emplace_back(StitchedER(expressed_region, i));
-                }
-            }
-            // no more splice junctions left, so each remaining expressed region forms its own StitchedER
-            else
+            output.emplace_back(candidate);
+            for (int id : candidate.er_ids)
             {
-                stitched_ERs.emplace_back(StitchedER(expressed_region, i));
+                if (id >= 0) consumed_indices.insert(id);
             }
         }
-        std::cout << "[INFO] Longest stitched ER in " << chrom << " contains " << max_stitched_ers << " ERs" << std::endl;
+        have_candidate = false;
+    };
+
+    int max_chain_len = 0; // number of ERs in the longest chain emitted
+
+    for (int i = 1; i < static_cast<int>(ers.size()); ++i)
+    {
+        const auto& expressed_region = ers[i];
+        if (!have_candidate)
+        {
+            candidate = StitchedER(expressed_region, i);
+            candidate.strand = strand;
+            have_candidate = true;
+            continue;
+        }
+
+        if (sj_it == strand_sjs.end())
+        {
+            // no SJs of this strand left: close the current candidate and start fresh
+            // with this ER as its own (unstitched) seed
+            close_candidate();
+            candidate = StitchedER(expressed_region, i);
+            candidate.strand = strand;
+            have_candidate = true;
+            continue;
+        }
+
+        // skip past SJs whose end coordinate is too far behind the chain
+        while (sj_it != strand_sjs.end()
+            && (candidate.end > rr_all_sj[*sj_it - 1].start
+                && !within_threshold(candidate.end, rr_all_sj[*sj_it - 1].start))
+            && rr_all_sj[*sj_it - 1].chrom == chrom)
+        {
+            ++sj_it;
+        }
+        // if we ran out, fall back to the last entry so dereferencing is safe
+        const auto sj_to_check = (sj_it == strand_sjs.end()) ? std::prev(strand_sjs.end()) : sj_it;
+
+        if (is_similar(candidate, expressed_region, rr_all_sj[*sj_to_check - 1]))
+        {
+            uint64_t sj_length = expressed_region.start - ers[candidate.er_ids.back()].end;
+            candidate.append(-1, sj_length, 0.0); // append the intron placeholder
+            candidate.append(i, expressed_region.length, expressed_region.coverage);
+            // count actual ERs in chain (non-negative er_ids entries)
+            int er_count = 0;
+            for (int id : candidate.er_ids) if (id >= 0) ++er_count;
+            if (er_count > max_chain_len) max_chain_len = er_count;
+            if (sj_it != strand_sjs.end()) ++sj_it;
+        }
+        else
+        {
+            close_candidate();
+            candidate = StitchedER(expressed_region, i);
+            candidate.strand = strand;
+            have_candidate = true;
+        }
+    }
+
+    if (have_candidate) close_candidate();
+
+    if (max_chain_len > 0)
+    {
+        std::cout << "[INFO] Longest stitched ER in " << chrom << " (" << strand << ") contains "
+                  << max_chain_len << " ERs" << std::endl;
+    }
+}
+
+
+void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::unordered_map<std::string, std::vector<uint32_t>>& mm_chrom_sj, const std::vector<SJRow>& rr_all_sj)
+{
+    // For each chromosome:
+    //   1. Bucket the chromosome's SJs by strand. SJRow.strand is true for '+', false for '-'.
+    //   2. Run stitch_one_strand twice (once per non-empty bucket). Each pass
+    //      emits only chains of 2 or more ERs, tagged with its strand, and
+    //      records the indices of consumed ERs.
+    //   3. Walk the chromosome's ERs and emit each ER not consumed by any
+    //      chain as a single-ER StitchedER tagged with strand '.'. This makes
+    //      sure every ER appears in stitched_ERs exactly once: either inside
+    //      a strand-labelled chain (when SJs supported it) or as an unstranded
+    //      standalone ER (when no SJ on either strand stitched it).
+    for (const auto& sjs : mm_chrom_sj)
+    {
+        const std::string& chrom = sjs.first;
+        if (expressed_regions.find(chrom) == expressed_regions.end()) continue;
+        const auto& ers = expressed_regions.at(chrom);
+        if (ers.empty()) continue;
+
+        std::vector<uint32_t> plus_sjs;
+        std::vector<uint32_t> minus_sjs;
+        plus_sjs.reserve(sjs.second.size());
+        minus_sjs.reserve(sjs.second.size());
+        for (uint32_t sj_id : sjs.second)
+        {
+            if (sj_id == 0 || sj_id - 1 >= rr_all_sj.size()) continue;
+            (rr_all_sj[sj_id - 1].strand ? plus_sjs : minus_sjs).emplace_back(sj_id);
+        }
+
+        std::unordered_set<int> consumed;
+        // Collect this chromosome's StitchedERs in a local vector so we can
+        // sort them by start position before appending. The original
+        // (unstranded) algorithm always emitted ERs in genomic order, and
+        // write_to_gtf relies on it; running two strand passes plus a
+        // standalone pass would otherwise interleave them out of order.
+        std::vector<StitchedER> chrom_stitched;
+        if (!plus_sjs.empty())  stitch_one_strand(chrom, '+', plus_sjs,  ers, rr_all_sj, consumed, chrom_stitched);
+        if (!minus_sjs.empty()) stitch_one_strand(chrom, '-', minus_sjs, ers, rr_all_sj, consumed, chrom_stitched);
+
+        // any ER not pulled into a chain is emitted once, unstranded
+        for (int i = 0; i < static_cast<int>(ers.size()); ++i)
+        {
+            if (consumed.count(i)) continue;
+            StitchedER fresh(ers[i], i);
+            // strand stays '.' (default)
+            chrom_stitched.emplace_back(fresh);
+        }
+
+        std::sort(chrom_stitched.begin(), chrom_stitched.end(),
+                  [](const StitchedER& a, const StitchedER& b) { return a.start < b.start; });
+        for (auto& ser : chrom_stitched) stitched_ERs.emplace_back(std::move(ser));
     }
 }
 

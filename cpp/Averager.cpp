@@ -8,12 +8,13 @@
 #include <sstream>
 #include <filesystem>
 #include <unordered_map>
+#include <unordered_set>
+#include <algorithm>
 #include <cassert>
 #include "BedGraphRow.h"
 #include "SJRow.h"
 #include "Averager.h"
 #include <future>
-#include <map>
 
 
 Averager::Averager(int threads_)
@@ -21,150 +22,241 @@ Averager::Averager(int threads_)
     nof_threads = threads_;
 }
 
-//compute mean coverage vector across samples
-void Averager::compute_mean_coverage(std::vector<std::unordered_map<std::string, std::vector<double>>>& all_per_base_coverages)
-{
+namespace {
 
-    if (all_per_base_coverages.empty())
+// Bucket each sample's intervals by chromosome so the per-chromosome sweep
+// only sees its own data. Within each chromosome the intervals are sorted by
+// start position because read_bedgraph / read_bigwig already emit in file
+// order, but we re-sort defensively in case a future input source mixes order.
+std::unordered_map<std::string, std::vector<std::vector<BedGraphRow>>>
+bucket_by_chrom(const std::vector<std::vector<BedGraphRow>>& all_bedgraphs)
+{
+    std::unordered_map<std::string, std::vector<std::vector<BedGraphRow>>> chrom_samples;
+    for (const auto& sample : all_bedgraphs)
     {
-        std::cerr << "[ERROR] No per-base coverages were computed..." << std::endl;
+        // collect this sample's rows per chromosome, then push into the global map
+        std::unordered_map<std::string, std::vector<BedGraphRow>> per_chrom;
+        for (const auto& row : sample)
+        {
+            per_chrom[row.chrom].push_back(row);
+        }
+        for (auto& [chrom, rows] : per_chrom)
+        {
+            std::sort(rows.begin(), rows.end(),
+                      [](const BedGraphRow& a, const BedGraphRow& b) { return a.start < b.start; });
+            chrom_samples[chrom].push_back(std::move(rows));
+        }
+    }
+    return chrom_samples;
+}
+
+// Compute the sparse mean for one chromosome. samples[s] is sample s's sorted,
+// non-overlapping interval list on this chromosome. total_samples is the
+// total sample count across the experiment, including samples that have no
+// coverage on this chromosome (they contribute zero to the mean).
+//
+// Algorithm: collect every distinct start/end position from every sample as a
+// breakpoint. Between two consecutive breakpoints no sample's interval starts
+// or ends, so each sample's contribution is constant over the segment. We
+// advance a per-sample iterator alongside the sweep so the per-segment
+// lookup is amortised O(1). Zero-mean segments are dropped from the output.
+std::vector<BedGraphRow> mean_for_chrom(const std::string& chrom,
+                                        const std::vector<std::vector<BedGraphRow>>& samples,
+                                        size_t total_samples)
+{
+    std::vector<BedGraphRow> result;
+    if (samples.empty() || total_samples == 0) return result;
+
+    // gather and dedupe breakpoints
+    std::vector<uint64_t> breakpoints;
+    for (const auto& sample : samples)
+    {
+        breakpoints.reserve(breakpoints.size() + sample.size() * 2);
+        for (const auto& row : sample)
+        {
+            breakpoints.push_back(row.start);
+            breakpoints.push_back(row.end);
+        }
+    }
+    std::sort(breakpoints.begin(), breakpoints.end());
+    breakpoints.erase(std::unique(breakpoints.begin(), breakpoints.end()), breakpoints.end());
+    if (breakpoints.size() < 2) return result;
+
+    // per-sample index into samples[s]: points to the first interval whose
+    // end > current_position, or samples[s].size() once exhausted.
+    std::vector<size_t> idx(samples.size(), 0);
+
+    for (size_t b = 0; b + 1 < breakpoints.size(); ++b)
+    {
+        const uint64_t seg_start = breakpoints[b];
+        const uint64_t seg_end   = breakpoints[b + 1];
+
+        double sum = 0.0;
+        for (size_t s = 0; s < samples.size(); ++s)
+        {
+            // skip past intervals that lie entirely before this segment
+            while (idx[s] < samples[s].size() && samples[s][idx[s]].end <= seg_start)
+            {
+                ++idx[s];
+            }
+            // include this sample's coverage only if its current interval covers seg_start
+            if (idx[s] < samples[s].size() &&
+                samples[s][idx[s]].start <= seg_start &&
+                seg_start < samples[s][idx[s]].end)
+            {
+                sum += samples[s][idx[s]].coverage;
+            }
+        }
+        const double mean = sum / static_cast<double>(total_samples);
+        if (mean > 0.0)
+        {
+            // adjacent identical-mean segments are coalesced below
+            result.emplace_back(BedGraphRow(chrom, seg_start, seg_end, mean));
+        }
+    }
+
+    // coalesce contiguous intervals that share the same mean coverage. This
+    // keeps the interval count tight and makes find_ERs's contiguity check cheap.
+    if (result.size() < 2) return result;
+    std::vector<BedGraphRow> merged;
+    merged.reserve(result.size());
+    merged.emplace_back(result[0]);
+    for (size_t i = 1; i < result.size(); ++i)
+    {
+        BedGraphRow& last = merged.back();
+        if (last.end == result[i].start && last.coverage == result[i].coverage)
+        {
+            last.end = result[i].end;
+            last.length = static_cast<unsigned int>(last.end - last.start);
+        }
+        else
+        {
+            merged.emplace_back(result[i]);
+        }
+    }
+    return merged;
+}
+
+} // anonymous namespace
+
+
+// compute mean coverage as sparse intervals across samples
+void Averager::compute_mean_coverage(std::vector<std::vector<BedGraphRow>>& all_bedgraphs)
+{
+    if (all_bedgraphs.empty())
+    {
+        std::cerr << "[ERROR] No samples were provided to compute_mean_coverage." << std::endl;
         return;
     }
 
-    // reserve storage
-    mean_coverage.reserve(all_per_base_coverages[0].size());
+    auto chrom_samples = bucket_by_chrom(all_bedgraphs);
+    const size_t total_samples = all_bedgraphs.size();
 
+    // populate the chroms list once, used by find_ERs to parallelise
+    chroms.clear();
+    chroms.reserve(chrom_samples.size());
+    for (auto& [chrom, _] : chrom_samples) chroms.push_back(chrom);
 
-    for (auto& item : all_per_base_coverages.at(0))
-    {
-        chroms.push_back(item.first);
-    }
-
-    // store threads
     std::vector<std::thread> threads;
     threads.reserve(nof_threads);
     std::atomic_int next_index{0};
 
-    std::cout << "[INFO] fastder is using " << nof_threads << " threads for detecting ERs." << std::endl;
-    // parallel iteration over chromosomes. pair.first = chromosome, pair.second = vector of per base coverages of that chromosome
-    for (unsigned int t = 0; t < nof_threads; ++t)
+    std::cout << "[INFO] fastder is using " << nof_threads << " threads for computing mean coverage." << std::endl;
+
+    for (unsigned int t = 0; t < static_cast<unsigned int>(nof_threads); ++t)
     {
-        // capture everything
         threads.emplace_back([&]()
         {
             while (true)
             {
-                unsigned int idx = next_index++;
-                if (idx >= chroms.size()) break; // leave loop after reaching the last chromosome
-                const std::string chrom = chroms[idx];
-                std::vector<double> chrom_mean_vector;
-
-                chrom_mean_vector.reserve(all_per_base_coverages[0].at(chrom).size());
-
-                // compute mean coverage across samples
-                for (unsigned int i = 0; i < all_per_base_coverages[0][chrom].size(); i++)
-                {
-                    double sum = 0.0;
-                    // iterate over all positions i across samples j
-                    for (unsigned int j = 0; j < all_per_base_coverages.size(); j++)
-                    {
-                        // all_per_base_coverages[sample_nr][chromosome][base_pair_position]
-                        sum += all_per_base_coverages[j][chrom][i]; //sample j, chromosome chrom, position i
-                    }
-                    chrom_mean_vector.push_back(sum / all_per_base_coverages.size()); // (sum over coverage at bp i) / (#nof samples)
-                }
-                // mutex to avoid race conditions
+                unsigned int i = next_index++;
+                if (i >= chroms.size()) break;
+                const std::string& chrom = chroms[i];
+                std::vector<BedGraphRow> intervals = mean_for_chrom(chrom, chrom_samples[chrom], total_samples);
                 {
                     std::lock_guard<std::mutex> lock(map_mutex);
-                    mean_coverage[chrom] = std::move(chrom_mean_vector);
+                    mean_intervals[chrom] = std::move(intervals);
                 }
-
             }
         });
     }
-    // join threads
-        for (auto& thr: threads) {
-            thr.join();
-        }
+    for (auto& thr : threads) thr.join();
 }
 
-// identify ERs with coverage > threshold and length > min_length bp
+
+// find ERs as maximal contiguous runs of mean intervals above threshold
 void Averager::find_ERs(double threshold, int min_length)
 {
-    if (mean_coverage.empty())
+    if (mean_intervals.empty())
     {
-        std::cerr << "[ERROR] The mean coverage matrix is empty..." << std::endl;
+        std::cerr << "[ERROR] mean_intervals is empty." << std::endl;
         return;
     }
 
-    // store threads
     std::vector<std::thread> workers;
     workers.reserve(nof_threads);
     std::atomic_int next_index{0};
 
-    // parallel iteration over chromosomes. pair.first = chromosome, pair.second = vector of per base coverages of that chromosome
-    for (unsigned int t = 0; t < nof_threads; ++t) {
+    for (unsigned int t = 0; t < static_cast<unsigned int>(nof_threads); ++t)
+    {
         workers.emplace_back([&, t] {
-            while (true) {
-                unsigned int idx = next_index++;
-                if (idx >= chroms.size()) break;
-                const std::string& chrom = chroms[idx];
+            while (true)
+            {
+                unsigned int i = next_index++;
+                if (i >= chroms.size()) break;
+                const std::string& chrom = chroms[i];
+                const std::vector<BedGraphRow>& intervals = mean_intervals[chrom];
 
-                int start = 0;
-                double current_sum = 0.0;
-                int count = 0;
-                std::vector<BedGraphRow> chrom_expressed_regions;
+                std::vector<BedGraphRow> chrom_ers;
 
-                for (unsigned int i = 0; i <= mean_coverage[chrom].size(); i++)
+                // running ER state
+                bool in_er = false;
+                uint64_t er_start = 0;
+                uint64_t er_end   = 0;
+                double weighted_sum = 0.0;
+
+                auto finalize = [&]()
                 {
-                    // append the last expressed region if it's long enough
-                    if (i == mean_coverage[chrom].size()) {
-                        if ((i - start) > min_length)
-                        {
-                            //TODO last ER can be inclusive or exclusive depending on mean_coverage[chrom][i] <= threshold, but this is currently not encoded
-                            double current_avg = current_sum / (i - start);
-                            BedGraphRow expressed_region = BedGraphRow(chrom, start, i, current_avg);
-                            chrom_expressed_regions.push_back(expressed_region);
-                        }
-                        break;
-                    }
-
-                    double coverage =  mean_coverage[chrom][i];
-                    // coverage is less than threshold
-                    if (mean_coverage[chrom][i] <= threshold)
+                    if (in_er && (er_end - er_start) > static_cast<uint64_t>(min_length))
                     {
-                        // region at least 5 bp long, append to results
-                        if ((i - start) > min_length)
-                        {
-                            double current_avg = current_sum / (i - start);
-
-                            // assert(count == i - start);
-                            BedGraphRow expressed_region = BedGraphRow(chrom, start, i, current_avg);
-                            chrom_expressed_regions.push_back(expressed_region);
-
-                        }
-                        //region too short to be appended, reset start and current avg
-                        start = i + 1;
-                        count = 0;
-                        current_sum = 0;
-
+                        const double avg = weighted_sum / static_cast<double>(er_end - er_start);
+                        chrom_ers.emplace_back(BedGraphRow(chrom, er_start, er_end, avg));
                     }
-                    // add to current ER
-                    else if (coverage > threshold)
+                    in_er = false;
+                    weighted_sum = 0.0;
+                };
+
+                for (const auto& row : intervals)
+                {
+                    if (row.coverage > threshold)
                     {
-                        current_sum += coverage;
-                        ++count;
+                        // a gap or non-contiguous step also breaks the ER, even if
+                        // the new interval is above threshold
+                        if (in_er && row.start == er_end)
+                        {
+                            er_end = row.end;
+                            weighted_sum += row.coverage * static_cast<double>(row.end - row.start);
+                        }
+                        else
+                        {
+                            finalize();
+                            er_start = row.start;
+                            er_end   = row.end;
+                            weighted_sum = row.coverage * static_cast<double>(row.end - row.start);
+                            in_er = true;
+                        }
                     }
+                    else
+                    {
+                        finalize();
+                    }
+                }
+                finalize();
 
-                } // end inner for loop
-
-                // use mutex to write to expressed_regions
-                // writing to unordered_maps concurrently is only thread-safe if the keys already exist
                 {
                     std::lock_guard<std::mutex> lock(map_mutex);
-                    expressed_regions[chrom] = std::move(chrom_expressed_regions);
+                    expressed_regions[chrom] = std::move(chrom_ers);
                 }
-
             }
         });
     }

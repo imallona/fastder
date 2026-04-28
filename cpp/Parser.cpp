@@ -54,21 +54,10 @@ Parser::Parser(std::string path_, std::vector<std::string> chromosomes_, int cor
     }
 }
 
-// fill vector with coverage value per bp (for mean coverage computation later on -> different bedgraphs have different binning intervals)
-void Parser::compute_per_base_coverage(const BedGraphRow& row, std::unordered_map<std::string, std::vector<double>>& per_base_coverage)
-{
-    // row.end is NOT inclusive
-    unsigned int bin_length = row.length ? row.length : static_cast<unsigned int>(row.end - row.start);
-    if (bin_length == 0)
-    {
-        std::cerr << "[ERROR] BedGraph bin with length 0 (start = end) provided!" << std::endl;
-        return;
-    }
-
-    auto& dest = per_base_coverage[row.chrom];
-    dest.insert(dest.end(), bin_length, row.coverage); // insert bin coverage for each individual bp
-
-}
+// compute_per_base_coverage was deleted. The dense per-base double vector it
+// produced was the largest single resident structure in fastder (47 Mb x 8 B
+// per chr21 sample, 24 GB per full-hg38 sample). Averager now consumes the
+// sparse interval form in all_bedgraphs directly.
 
 // parse relevant chromosomes of a bedgraph file
 std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint64_t& library_size) const
@@ -361,7 +350,6 @@ void Parser::read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigne
     std::cout << "[INFO] fastder is using " << nof_threads + 1 << " threads for parsing." << std::endl;
     // reserve space
     all_bedgraphs.resize(bedgraph_files.size());
-    all_per_base_coverages.resize(bedgraph_files.size());
 
     // storage for threads
     std::vector<std::thread> threads;
@@ -380,27 +368,38 @@ void Parser::read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigne
                 unsigned int i = next_index++; //passes index, then does post-increment!
                 if (i >= bedgraph_files.size()) break;
 
+                const std::string& filename = bedgraph_files.at(i);
                 // mutex to ensure print statement is not shuffled from concurrency
                 {
                     std::lock_guard<std::mutex> lock(mutex);
-                    std::cout << "[FILE] Processing BedGraph File " << bedgraph_files.at(i) << std::endl;
+                    std::cout << "[FILE] Processing coverage file " << filename << std::endl;
                 }
                 uint64_t library_size = 0; // ensure that the integer type is large enough
-                std::vector<BedGraphRow> sample_bedgraph = read_bedgraph(bedgraph_files.at(i), library_size);
-                std::unordered_map<std::string, std::vector<double>> per_base_coverage;
+                std::vector<BedGraphRow> sample_bedgraph;
 
-                // normalize to CPM and expand rows to per-base coverage (also normalized)
+                // pick the right reader by file extension. BigWig parsing is
+                // gated on libBigWig at compile time; if it is not built in,
+                // read_bigwig logs an error and returns an empty vector.
+                if (filename.size() >= 3 && filename.substr(filename.size() - 3) == ".bw")
+                {
+                    sample_bedgraph = read_bigwig(filename, library_size);
+                }
+                else
+                {
+                    sample_bedgraph = read_bedgraph(filename, library_size);
+                }
+
+                // normalize each interval to CPM. Per-base expansion is no
+                // longer performed; Averager consumes the sparse intervals.
                 for (BedGraphRow& row : sample_bedgraph)
                 {
                     row.normalize(library_size);
-                    compute_per_base_coverage(row, per_base_coverage);
                 }
 
-                // add all bedgraphs of one sample to the matrix
+                // add the sample's intervals to the per-sample matrix
                 {
                     std::lock_guard lock(mutex);
                     all_bedgraphs[i] = std::move(sample_bedgraph);
-                    all_per_base_coverages[i] = std::move(per_base_coverage);
                 }
 
             }
@@ -410,6 +409,76 @@ void Parser::read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigne
     for (auto& thr: threads) {
         thr.join();
     }
+}
+
+
+// libBigWig integration. The body is gated on FASTDER_USE_LIBBIGWIG so the
+// default build is hermetic. When the option is on, libBigWig is FetchContent'd
+// from upstream and its headers are on the include path.
+#ifdef FASTDER_USE_LIBBIGWIG
+extern "C" {
+#include <bigWig.h>
+}
+#include <mutex>
+#endif
+
+std::vector<BedGraphRow> Parser::read_bigwig(const std::string& filename, uint64_t& library_size,
+                                             char strand) const
+{
+    std::vector<BedGraphRow> intervals;
+#ifdef FASTDER_USE_LIBBIGWIG
+    // bwInit allocates a process-wide read buffer. Call it once across all
+    // threads. bwCleanup is left to process exit; libBigWig's cleanup function
+    // is not safe to call while other readers may still be active.
+    static std::once_flag bw_init_flag;
+    std::call_once(bw_init_flag, []() { bwInit(1 << 17); });
+
+    bigWigFile_t* fp = bwOpen(const_cast<char*>(filename.c_str()), nullptr, "r");
+    if (!fp)
+    {
+        std::cerr << "[ERROR] Could not open BigWig " << filename << std::endl;
+        return intervals;
+    }
+
+    // Iterate the BigWig's chromosomes. Skip any that the user did not
+    // request via --chr (chromosomes_set), matching read_bedgraph's filter.
+    for (int64_t k = 0; k < fp->cl->nKeys; ++k)
+    {
+        const std::string chrom = fp->cl->chrom[k];
+        const uint32_t chrom_len = fp->cl->len[k];
+        if (!chromosomes_set.contains(chrom)) continue;
+
+        // bwGetOverlappingIntervals returns the BigWig's intrinsic intervals
+        // that overlap [start, end). Calling it for the entire chromosome
+        // yields the file's stored intervals on that chromosome.
+        bwOverlappingIntervals_t* o = bwGetOverlappingIntervals(
+            fp, const_cast<char*>(chrom.c_str()), 0, chrom_len);
+        if (!o) continue;
+
+        intervals.reserve(intervals.size() + o->l);
+        for (uint32_t i = 0; i < o->l; ++i)
+        {
+            BedGraphRow row(chrom,
+                            static_cast<uint64_t>(o->start[i]),
+                            static_cast<uint64_t>(o->end[i]),
+                            static_cast<double>(o->value[i]),
+                            strand);
+            row.length = static_cast<unsigned int>(row.end - row.start);
+            row.total_reads = static_cast<unsigned int>(row.length * row.coverage);
+            library_size += row.total_reads;
+            intervals.emplace_back(std::move(row));
+        }
+        bwDestroyOverlappingIntervals(o);
+    }
+
+    bwClose(fp);
+#else
+    (void)filename; (void)library_size; (void)strand;
+    std::cerr << "[ERROR] read_bigwig was called but fastder was built without "
+                 "libBigWig support. Reconfigure with -DFASTDER_USE_LIBBIGWIG=ON "
+                 "or feed BedGraph (.bedGraph) input." << std::endl;
+#endif
+    return intervals;
 }
 
 // attempt to parse all files in path (not recursive!)
@@ -436,8 +505,12 @@ void Parser::search_directory() {
 
         }
 
-        // collect all bedgraph files to later fill up rail_id_to_mm_id
-        else if (filename.find(".bedGraph") != std::string::npos)
+        // collect all coverage files (BedGraph or BigWig) to later fill up
+        // rail_id_to_mm_id. The variable name keeps "bedgraph_files" for
+        // continuity but the list is just paths; read_all_bedgraphs picks the
+        // right reader by extension. .bw files require a libBigWig-enabled build.
+        else if (filename.find(".bedGraph") != std::string::npos ||
+                 (filename.size() >= 3 && filename.substr(filename.size() - 3) == ".bw"))
         {
             bedgraph_files.emplace_back(filename);
         }
