@@ -14,7 +14,6 @@
 #include <chrono>
 #include <GTFRow.h>
 #include <map>
-#include <unordered_set>
 
 class Integrator
 {
@@ -22,19 +21,6 @@ class Integrator
     Integrator(double coverage_tolerance_, int position_tolerance_);
 
     void stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::unordered_map<std::string, std::vector<uint32_t>>& mm_chrom_sj, const std::vector<SJRow>& rr_all_sj);
-    // Per-strand pass invoked by stitch_up. Builds chains of ERs connected by
-    // SJs of the requested strand and appends them to stitched_ERs only when
-    // the chain contains 2 or more ERs. Indices of ERs that ended up in any
-    // emitted chain are added to consumed_indices so the caller can avoid
-    // emitting them again as unstranded standalone ERs. Exposed publicly so
-    // tests can exercise one bucket in isolation.
-    void stitch_one_strand(const std::string& chrom,
-                           char strand,
-                           const std::vector<uint32_t>& strand_sjs,
-                           const std::vector<BedGraphRow>& ers,
-                           const std::vector<SJRow>& rr_all_sj,
-                           std::unordered_set<int>& consumed_indices,
-                           std::vector<StitchedER>& output);
     bool within_threshold(double val1, double val2) const;
     bool within_threshold(uint64_t val1, uint64_t val2) const;
     bool is_similar(const StitchedER& most_recent_er, const BedGraphRow& expressed_region, const SJRow& current_sj);

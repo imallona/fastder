@@ -4,10 +4,32 @@
 It is intended to build on the `recount3` [resource](https://rna.recount.bio/), which consists of over 750'000 uniformly processed RNA-seq samples across different mouse and human studies.
 The tool aims to reconstruct expressed genes prior to splicing in an annotation-agnostic approach.
 
-`fastder` takes genome-wide coverage bigWig files and splice junction coordinates as an input. The tool averages across samples and performs thresholding to identify 
-consecutive regions with above-threshold expression. Following this, `fastder` attempts to stitch together expressed regions (ERs)
-by searching for splice junction coordinates that overlap with the start and end position of these expressed regions. 
+`fastder` takes genome-wide coverage files and splice junction coordinates as input. Coverage can be supplied as BedGraph by default, or as BigWig when the build was configured with `-DFASTDER_USE_LIBBIGWIG=ON`. The tool averages across samples and applies a coverage threshold to identify consecutive regions with above-threshold expression. It then stitches expressed regions (ERs) together when a splice junction in the input matches the end of one ER and the start of the next.
 
+Coverage is held in memory as a sparse list of intervals rather than a dense per-base vector. On chr21 this keeps the resident set in the low hundreds of MB instead of multiple GB at full hg38. The strand of each splice junction is read into the in-memory model but is not yet used by the stitching step; strand-aware stitching is planned and the data structures already carry the field.
+
+
+## Building
+
+The default build needs cmake (4.0 or newer) and a C++20 compiler:
+
+```
+mkdir build
+cd build
+cmake ..
+make -j
+```
+
+To read BigWig coverage directly instead of converting to BedGraph first,
+configure with `-DFASTDER_USE_LIBBIGWIG=ON`. CMake will fetch libBigWig from
+GitHub at configure time. zlib and libcurl headers must be available.
+
+```
+cmake -DFASTDER_USE_LIBBIGWIG=ON ..
+```
+
+The unit tests run with `ctest` from the build directory. Two tests are gated
+on the libBigWig option and are skipped in the default build.
 
 ## Installation
 

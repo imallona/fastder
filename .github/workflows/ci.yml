@@ -1,29 +1,27 @@
 name: build_and_test
 
+# Trigger only on pull_request and manual dispatch. The push trigger was
+# removed so that opening a PR from a branch in this repo does not run the
+# workflow twice (once for the push, once for the pull_request).
 on:
   pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - build
-      - imallona
-      - perf-mm-rr-memory
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     # - name: Install dependencies
     #   run: |
     #     sudo apt-get update
     #     sudo apt-get install -y g++ cppcheck python3-pip
     #     pip3 install "cmake>=4.0"
     #     cmake --version
-        
+
     - name: Set up Miniconda
       uses: conda-incubator/setup-miniconda@v3
       with:
@@ -38,27 +36,27 @@ jobs:
         conda install -y conda-build make gxx_linux-64 cmake>=4.0
         cmake --version
         conda-build --version
-        
+
     - name: Configure CMake
       shell: bash -l {0}
       run: |
         mkdir -p build
         cd build
         cmake ..
-    
+
     - name: Build
       shell: bash -l {0}
       run: |
         cd build
         make -j$(nproc)
-    
+
     - name: Run tests
       shell: bash -l {0}
       run: |
         cd build
         ctest --output-on-failure --verbose
-    
-    # - name: Run cppcheck      
+
+    # - name: Run cppcheck
     #   uses: deep5050/cppcheck-action@main
     #   with:
     #     skip_preprocessor: disable
@@ -92,7 +90,7 @@ jobs:
 
     - name: Clean previous build
       run: rm -rf build
-      
+
     - name: Build Conda package
       shell: bash -l {0}
       run: |
@@ -103,3 +101,47 @@ jobs:
       with:
         name: fastder-conda
         path: /usr/share/miniconda/envs/build-env/conda-bld/linux-64/*.conda
+
+  # Second job: build with libBigWig support so the BigWig round-trip and
+  # equivalence tests in UnitTests.cpp actually run instead of skipping.
+  # libBigWig is fetched at configure time. Its build needs zlib and libcurl
+  # headers; we pull them from conda-forge since the project requires
+  # cmake >= 4.0 which is also only available there on this runner.
+  build-and-test-libbigwig:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        python-version: 3.12
+        channels: conda-forge,nodefaults
+        activate-environment: bw-build-env
+
+    - name: Install build tools and libBigWig deps
+      shell: bash -l {0}
+      run: |
+        conda install -y make gxx_linux-64 cmake>=4.0 zlib libcurl
+
+    - name: Configure CMake with libBigWig
+      shell: bash -l {0}
+      run: |
+        mkdir -p build_bw
+        cd build_bw
+        cmake -DFASTDER_USE_LIBBIGWIG=ON ..
+
+    - name: Build
+      shell: bash -l {0}
+      run: |
+        cd build_bw
+        make -j$(nproc)
+
+    - name: Run tests (BigWig path active)
+      shell: bash -l {0}
+      run: |
+        cd build_bw
+        ctest --output-on-failure --verbose
