@@ -160,6 +160,18 @@ void Averager::compute_mean_coverage(std::vector<std::vector<BedGraphRow>>& all_
 
     std::cout << "[INFO] fastder is using " << nof_threads << " threads for computing mean coverage." << std::endl;
 
+    // Pre-build a vector of pointers to each chromosome's sample list so
+    // worker threads do read-only lookups by index. Calling chrom_samples[]
+    // from threads would be a non-const access on a shared map and could
+    // mutate it under concurrent reads.
+    std::vector<const std::vector<std::vector<BedGraphRow>>*> chrom_samples_ptrs;
+    chrom_samples_ptrs.reserve(chroms.size());
+    for (const auto& chrom : chroms)
+    {
+        const auto it = chrom_samples.find(chrom);
+        chrom_samples_ptrs.push_back(it == chrom_samples.end() ? nullptr : &it->second);
+    }
+
     for (unsigned int t = 0; t < static_cast<unsigned int>(nof_threads); ++t)
     {
         threads.emplace_back([&]()
@@ -169,7 +181,9 @@ void Averager::compute_mean_coverage(std::vector<std::vector<BedGraphRow>>& all_
                 unsigned int i = next_index++;
                 if (i >= chroms.size()) break;
                 const std::string& chrom = chroms[i];
-                std::vector<BedGraphRow> intervals = mean_for_chrom(chrom, chrom_samples[chrom], total_samples);
+                const auto* samples_ptr = chrom_samples_ptrs[i];
+                if (samples_ptr == nullptr) continue;
+                std::vector<BedGraphRow> intervals = mean_for_chrom(chrom, *samples_ptr, total_samples);
                 {
                     std::lock_guard<std::mutex> lock(map_mutex);
                     mean_intervals[chrom] = std::move(intervals);

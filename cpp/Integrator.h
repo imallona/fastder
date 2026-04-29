@@ -4,11 +4,8 @@
 
 #ifndef MLS_INTEGRATOR_H
 #define MLS_INTEGRATOR_H
+
 #include <unordered_map>
-
-#endif //MLS_INTEGRATOR_H
-
-
 #include <SJRow.h>
 #include <BedGraphRow.h>
 #include <chrono>
@@ -50,3 +47,5 @@ class Integrator
 
 
 };
+
+#endif //MLS_INTEGRATOR_H

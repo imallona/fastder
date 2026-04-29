@@ -5,8 +5,6 @@
 #ifndef MLS_STITCHEDER_H
 #define MLS_STITCHEDER_H
 
-#endif //MLS_STITCHEDER_H
-
 #include <vector>
 #include <BedGraphRow.h>
 #include <cstdint>
@@ -52,3 +50,5 @@ public:
 
     }
 };
+
+#endif //MLS_STITCHEDER_H
