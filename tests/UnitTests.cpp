@@ -809,6 +809,93 @@ TEST(Integrator, StitchUpEmitsInGenomicOrder)
     }
 }
 
+// A pure plus-strand chain comes back tagged '+'. Standalones from an
+// otherwise-unmatched ER come back tagged '.'.
+TEST(Integrator, StitchUpTagsPlusChainsAsPlus)
+{
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11000, 500, '+', false),
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10500, 100.0),
+        BedGraphRow("chr1", 11000, 12500, 101.0),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1};
+
+    Integrator integrator(0.1, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    ASSERT_EQ(integrator.stitched_ERs.size(), 1u);
+    EXPECT_EQ(integrator.stitched_ERs[0].strand, '+');
+    EXPECT_EQ(integrator.stitched_ERs[0].er_ids.size(), 3u);
+}
+
+// Same scenario but with the SJ on the minus strand. Tag should be '-'.
+TEST(Integrator, StitchUpTagsMinusChainsAsMinus)
+{
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11000, 500, '-', false),
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10500, 100.0),
+        BedGraphRow("chr1", 11000, 12500, 101.0),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1};
+
+    Integrator integrator(0.1, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    ASSERT_EQ(integrator.stitched_ERs.size(), 1u);
+    EXPECT_EQ(integrator.stitched_ERs[0].strand, '-');
+}
+
+// Both strands present on the same chromosome. Each ER ends up in exactly
+// one StitchedER. ERs claimed by the first strand pass do not appear in
+// the second; ERs unclaimed by either are emitted as unstranded standalones.
+TEST(Integrator, StitchUpEachERAppearsExactlyOnceWithBothStrands)
+{
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11000, 500, '+', false),
+        SJRow("chr1", 20500, 21000, 500, '-', false),
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10500, 100.0),  // chain start (+ pass)
+        BedGraphRow("chr1", 11000, 12500, 101.0),  // chain extension (+)
+        BedGraphRow("chr1", 13000, 14000, 5.0),    // unstitched gap
+        BedGraphRow("chr1", 20000, 20500, 50.0),   // chain start (- pass)
+        BedGraphRow("chr1", 21000, 22000, 50.0),   // chain extension (-)
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1, 2};
+
+    Integrator integrator(0.1, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    int total_ers_in_output = 0;
+    int unstranded_count = 0;
+    int plus_count       = 0;
+    int minus_count      = 0;
+    for (const auto& ser : integrator.stitched_ERs)
+    {
+        for (int id : ser.er_ids)
+        {
+            if (id >= 0) ++total_ers_in_output;
+        }
+        if (ser.strand == '.') ++unstranded_count;
+        if (ser.strand == '+') ++plus_count;
+        if (ser.strand == '-') ++minus_count;
+    }
+    EXPECT_EQ(total_ers_in_output, 5);
+    EXPECT_EQ(plus_count,       1);
+    EXPECT_EQ(minus_count,      1);
+    EXPECT_EQ(unstranded_count, 1);
+}
+
 
 // =====================================================================
 // libBigWig integration (gated). These run only when fastder is built with
