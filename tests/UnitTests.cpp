@@ -12,6 +12,8 @@
 #include "SJRow.h"
 #include "Parser.h"
 #include "Averager.h"
+#include "GTFRow.h"
+#include <sstream>
 
 TEST(SpliceTestChromOne, TwoStitchedERsTwoSJs)
 {
@@ -894,6 +896,45 @@ TEST(Integrator, StitchUpEachERAppearsExactlyOnceWithBothStrands)
     EXPECT_EQ(plus_count,       1);
     EXPECT_EQ(minus_count,      1);
     EXPECT_EQ(unstranded_count, 1);
+}
+
+// GTFRow must propagate the StitchedER strand into column 7 of the output
+// row. Without this, gffcompare can never match transcripts or exons since
+// it requires strand agreement at those levels.
+TEST(GTFRow, SerializesPlusStrandFromStitchedER)
+{
+    BedGraphRow er("chr1", 10000, 10500, 100.0);
+    StitchedER s(er, 0);
+    s.strand = '+';
+
+    GTFRow row(s, "transcript", 1);
+    std::ostringstream os;
+    os << row;
+    std::string line = os.str();
+    std::istringstream is(line);
+    std::vector<std::string> cols;
+    std::string field;
+    while (std::getline(is, field, '\t')) cols.push_back(field);
+    ASSERT_GE(cols.size(), 7u);
+    EXPECT_EQ(cols[6], "+");
+}
+
+TEST(GTFRow, SerializesMinusStrandFromStitchedER)
+{
+    BedGraphRow er("chr1", 10000, 10500, 100.0);
+    StitchedER s(er, 0);
+    s.strand = '-';
+
+    GTFRow row(s, "transcript", 1);
+    std::ostringstream os;
+    os << row;
+    std::string line = os.str();
+    std::istringstream is(line);
+    std::vector<std::string> cols;
+    std::string field;
+    while (std::getline(is, field, '\t')) cols.push_back(field);
+    ASSERT_GE(cols.size(), 7u);
+    EXPECT_EQ(cols[6], "-");
 }
 
 
