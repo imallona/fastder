@@ -34,6 +34,11 @@ public:
     uint64_t start;
     uint64_t end;
     std::string chrom;
+    // Strand of the splice junctions that produced this stitched ER. '.' for
+    // unstranded inputs (the SJs in this chromosome were not partitioned by
+    // strand) and '+' or '-' when the stitching pass restricted to one
+    // strand. Matches the strand semantics on BedGraphRow and SJRow.
+    char strand = '.';
 
     // overload output operator for SJRow
     friend std::ostream& operator<< (std::ostream& os, const StitchedER& stitched_er)

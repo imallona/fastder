@@ -16,6 +16,7 @@ GTFRow::GTFRow(const StitchedER& region, std::string ftr, unsigned int id)
     score = region.across_er_coverage;
     start = region.start;
     end = region.end;
+    strand = std::string(1, region.strand);
 
     change_feature(ftr, id, 0);
 

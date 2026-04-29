@@ -19,32 +19,34 @@ public:
     unsigned int length;
     bool strand; // 1 = +, 0 = -
     bool annotated; // 0 or 1
-    std::string left_motif;
-    std::string right_motif;
-    std::string  left_annotated;
-    std::string  right_annotated;
+
+    // The recount3 RR file carries four extra per-junction columns
+    // (left_motif, right_motif, left_annotated, right_annotated) that fastder
+    // reads but never accesses after parse. On full hg38 with about 9.5M
+    // junctions those strings cost roughly 2 GB of resident heap. operator>>
+    // below parses and discards them so the on-disk format stays compatible
+    // and the storage cost goes away.
 
     // constructor
     SJRow() = default;
-    SJRow(std::string _chrom, uint64_t _start, uint64_t _end, int _length, char _strand, bool _annotated,
-        std::string _left_motif, std::string _right_motif, std::string _left_annotated, std::string _right_annotated);
+    SJRow(std::string _chrom, uint64_t _start, uint64_t _end, int _length, char _strand, bool _annotated);
 
     // overload input operator for SJRow
     friend std::istream& operator>>(std::istream &is, SJRow &row) {
         char strand_;
-        is >> row.chrom >> row.start >> row.end >> row.length >> strand_ >> row.annotated >> row.left_motif
-        >> row.right_motif >> row.left_annotated >> row.right_annotated;
+        std::string discard;
+        is >> row.chrom >> row.start >> row.end >> row.length >> strand_ >> row.annotated
+           >> discard >> discard >> discard >> discard;
         row.strand = (strand_ == '+'); // 1 if +
         return is;
     }
 
 
-    // overload output operator for SJRow
+    // overload output operator for SJRow (debug only, not part of fastder's outputs)
     friend std::ostream& operator<< (std::ostream& os, const SJRow& row)
     {
-        return os << row.chrom << "\t" << row.start << "\t" << row.end << "\t" << row.length << "\t" << row.strand << "\t" <<
-            row.annotated << "\t" << row.left_motif << "\t" << row.right_motif << "\t" << row.left_annotated << "\t" << row.right_annotated;
-
+        return os << row.chrom << "\t" << row.start << "\t" << row.end << "\t" << row.length
+                  << "\t" << row.strand << "\t" << row.annotated;
     }
 
 };

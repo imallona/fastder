@@ -24,5 +24,14 @@ target_link_libraries(fastder-tests
         GTest::gtest_main
 )
 
+# When fastder is built with libBigWig, the BigWig round-trip and equivalence
+# tests in UnitTests.cpp include <bigWig.h> and call libBigWig's writer API,
+# so the test target needs both the include path and the static lib too.
+if(FASTDER_USE_LIBBIGWIG)
+    target_link_libraries(fastder-tests PRIVATE BigWig)
+    target_include_directories(fastder-tests PRIVATE ${libbigwig_src_SOURCE_DIR})
+    target_compile_definitions(fastder-tests PRIVATE FASTDER_USE_LIBBIGWIG)
+endif()
+
 include(GoogleTest)
 gtest_discover_tests(fastder-tests)
