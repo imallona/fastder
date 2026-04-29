@@ -15,6 +15,7 @@
 #include <mutex>
 #include <charconv>
 #include <cstdint> // for library size which can be too large for unsigned int
+#include <cstdlib>
 
 #include "Parser.h"
 
@@ -377,11 +378,19 @@ void Parser::read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigne
                 std::vector<BedGraphRow> sample_bedgraph;
 
                 // pick the right reader by file extension. BigWig parsing is
-                // gated on libBigWig at compile time; if it is not built in,
-                // read_bigwig logs an error and returns an empty vector.
+                // gated on libBigWig at compile time; without it a .bw input
+                // is a hard error so we don't silently dilute the mean
+                // coverage by counting an empty sample toward total_samples.
                 if (filename.size() >= 3 && filename.substr(filename.size() - 3) == ".bw")
                 {
+#ifdef FASTDER_USE_LIBBIGWIG
                     sample_bedgraph = read_bigwig(filename, library_size);
+#else
+                    std::cerr << "[ERROR] BigWig input " << filename
+                              << " requires fastder built with -DFASTDER_USE_LIBBIGWIG=ON. "
+                              << "Reconfigure or convert the file to BedGraph." << std::endl;
+                    std::exit(1);
+#endif
                 }
                 else
                 {

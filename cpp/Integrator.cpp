@@ -164,10 +164,17 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
     //      with strand '.'.
     //   4. Sort the chromosome's StitchedERs by start so write_to_gtf reads
     //      them in genomic order even when chains came from different passes.
-    for (const auto& chrom_ers : expressed_regions)
+    //
+    // expressed_regions is an unordered_map, so its iteration order is
+    // implementation-defined. Sort the keys here to make cross-chromosome
+    // output order deterministic across runs and platforms.
+    std::vector<std::string> chroms_sorted;
+    chroms_sorted.reserve(expressed_regions.size());
+    for (const auto& chrom_ers : expressed_regions) chroms_sorted.push_back(chrom_ers.first);
+    std::sort(chroms_sorted.begin(), chroms_sorted.end());
+    for (const std::string& chrom : chroms_sorted)
     {
-        const std::string& chrom = chrom_ers.first;
-        const auto& ers = chrom_ers.second;
+        const auto& ers = expressed_regions.at(chrom);
         if (ers.empty()) continue;
 
         std::vector<uint32_t> plus_sjs;
