@@ -898,6 +898,30 @@ TEST(Integrator, StitchUpEachERAppearsExactlyOnceWithBothStrands)
     EXPECT_EQ(unstranded_count, 1);
 }
 
+// A chromosome with expressed regions but no entry in mm_chrom_sj must still
+// have its ERs emitted as single-ER unstranded StitchedERs. The previous
+// implementation iterated only over mm_chrom_sj keys and silently dropped
+// ERs from chromosomes with no junctions.
+TEST(Integrator, StitchUpEmitsERsOnChromosomesWithNoSJs)
+{
+    std::vector<SJRow> rr_all_sj = {};
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10500, 100.0),
+        BedGraphRow("chr1", 11000, 12500, 101.0),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+
+    Integrator integrator(0.1, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    ASSERT_EQ(integrator.stitched_ERs.size(), 2u);
+    for (const auto& ser : integrator.stitched_ERs) {
+        EXPECT_EQ(ser.strand, '.');
+        EXPECT_EQ(ser.er_ids.size(), 1u);
+    }
+}
+
 // GTFRow must propagate the StitchedER strand into column 7 of the output
 // row. Without this, gffcompare can never match transcripts or exons since
 // it requires strand agreement at those levels.

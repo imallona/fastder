@@ -202,7 +202,17 @@ void Averager::find_ERs(double threshold, int min_length)
                 unsigned int i = next_index++;
                 if (i >= chroms.size()) break;
                 const std::string& chrom = chroms[i];
-                const std::vector<BedGraphRow>& intervals = mean_intervals[chrom];
+                // Read-only lookup: operator[] would silently insert a default
+                // entry under concurrent access from worker threads, which is
+                // undefined behavior on a shared map.
+                const auto intervals_it = mean_intervals.find(chrom);
+                if (intervals_it == mean_intervals.end())
+                {
+                    std::cerr << "[ERROR] Missing mean_intervals entry for chromosome: "
+                              << chrom << std::endl;
+                    continue;
+                }
+                const std::vector<BedGraphRow>& intervals = intervals_it->second;
 
                 std::vector<BedGraphRow> chrom_ers;
 
