@@ -740,15 +740,15 @@ TEST(Averager, FindERsMinLengthFilters)
 
 
 // =====================================================================
-// Integrator stitch_up (strand-agnostic single-pass)
+// Integrator stitch_up (strand-aware)
 // =====================================================================
 //
-// stitch_up is currently strand-agnostic by design: it walks each
-// chromosome's ERs once and tries to extend the current chain via the next
-// SJ in mm_chrom_sj[chrom] regardless of SJ strand. Strand-aware stitching
-// is on the roadmap but not active in this branch, so these tests assert
-// the strand-agnostic behaviour and that every ER appears in stitched_ERs
-// exactly once.
+// stitch_up partitions splice junctions by strand. Each chromosome's ERs
+// are walked once per strand, and chains built from junction-linked ERs
+// are tagged '+' or '-'. ERs that no junction stitched to a neighbour
+// stay unstranded ('.'). The tests below verify the bookkeeping
+// guarantees, in particular that every ER appears in stitched_ERs
+// exactly once across the strand passes.
 
 // Each ER on a chromosome appears in stitched_ERs exactly once: total exon
 // count equals total ER count.
@@ -1070,7 +1070,7 @@ TEST(BigWig, BedGraphAndBigWigEquivalentExpressedRegions)
 
     const std::vector<std::tuple<uint32_t, uint32_t, float>> intervals = {
         {100, 300, 10.0f},
-        {300, 400, 0.5f},   // below the 1.0 threshold used in find_ERs
+        {300, 400, 0.0f},   // below the 1.0 threshold used in find_ERs (integer-parseable for the BedGraph reader)
         {400, 700, 10.0f},
     };
     write_test_bigwig(bw_path, "chr1", 1000, intervals);

@@ -196,6 +196,11 @@ void Parser::read_rr(std::string filename)
 // read MM file
 // IMPORTANT: the RR file is not sorted by chromosomes!
 void Parser::read_mm(std::string filename) {
+        // Reset MM-derived state in case the same Parser instance reads more
+        // than one MM file. Junction ids would otherwise accumulate across
+        // calls and downstream stitching would see duplicates.
+        mm_chrom_sj.clear();
+
         //read in file from path
         std::ifstream file(filename);
         //

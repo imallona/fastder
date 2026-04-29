@@ -35,8 +35,10 @@ public:
     friend std::istream& operator>>(std::istream &is, SJRow &row) {
         char strand_;
         std::string discard;
-        is >> row.chrom >> row.start >> row.end >> row.length >> strand_ >> row.annotated
-           >> discard >> discard >> discard >> discard;
+        if (!(is >> row.chrom >> row.start >> row.end >> row.length >> strand_ >> row.annotated
+                 >> discard >> discard >> discard >> discard)) {
+            return is;
+        }
         row.strand = (strand_ == '+'); // 1 if +
         return is;
     }
@@ -46,7 +48,7 @@ public:
     friend std::ostream& operator<< (std::ostream& os, const SJRow& row)
     {
         return os << row.chrom << "\t" << row.start << "\t" << row.end << "\t" << row.length
-                  << "\t" << row.strand << "\t" << row.annotated;
+                  << "\t" << (row.strand ? '+' : '-') << "\t" << row.annotated;
     }
 
 };

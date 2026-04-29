@@ -154,6 +154,11 @@ void Integrator::stitch_one_strand(const std::string& chrom,
 
 void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::unordered_map<std::string, std::vector<uint32_t>>& mm_chrom_sj, const std::vector<SJRow>& rr_all_sj)
 {
+    // Reset stitched_ERs in case the same Integrator instance is being
+    // reused; otherwise results from a previous run would accumulate and
+    // write_to_gtf would emit duplicates.
+    stitched_ERs.clear();
+
     // Strand-aware stitching. For each chromosome with at least one ER:
     //   1. Bucket SJs by strand (SJRow.strand: true -> '+', false -> '-').
     //      A chromosome with no SJs at all skips both strand passes and
