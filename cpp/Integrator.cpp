@@ -154,29 +154,34 @@ void Integrator::stitch_one_strand(const std::string& chrom,
 
 void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::unordered_map<std::string, std::vector<uint32_t>>& mm_chrom_sj, const std::vector<SJRow>& rr_all_sj)
 {
-    // Strand-aware stitching. For each chromosome:
+    // Strand-aware stitching. For each chromosome with at least one ER:
     //   1. Bucket SJs by strand (SJRow.strand: true -> '+', false -> '-').
+    //      A chromosome with no SJs at all skips both strand passes and
+    //      every ER is emitted as a single-ER StitchedER with strand '.'.
     //   2. Run stitch_one_strand for each non-empty bucket. The shared
     //      consumed_indices set ensures an ER can be in at most one chain.
     //   3. Emit any ER not pulled into a chain as a single-ER StitchedER
     //      with strand '.'.
     //   4. Sort the chromosome's StitchedERs by start so write_to_gtf reads
     //      them in genomic order even when chains came from different passes.
-    for (const auto& sjs : mm_chrom_sj)
+    for (const auto& chrom_ers : expressed_regions)
     {
-        const std::string& chrom = sjs.first;
-        if (expressed_regions.find(chrom) == expressed_regions.end()) continue;
-        const auto& ers = expressed_regions.at(chrom);
+        const std::string& chrom = chrom_ers.first;
+        const auto& ers = chrom_ers.second;
         if (ers.empty()) continue;
 
         std::vector<uint32_t> plus_sjs;
         std::vector<uint32_t> minus_sjs;
-        plus_sjs.reserve(sjs.second.size());
-        minus_sjs.reserve(sjs.second.size());
-        for (uint32_t sj_id : sjs.second)
+        const auto sjs_it = mm_chrom_sj.find(chrom);
+        if (sjs_it != mm_chrom_sj.end())
         {
-            if (sj_id == 0 || sj_id - 1 >= rr_all_sj.size()) continue;
-            (rr_all_sj[sj_id - 1].strand ? plus_sjs : minus_sjs).emplace_back(sj_id);
+            plus_sjs.reserve(sjs_it->second.size());
+            minus_sjs.reserve(sjs_it->second.size());
+            for (uint32_t sj_id : sjs_it->second)
+            {
+                if (sj_id == 0 || sj_id - 1 >= rr_all_sj.size()) continue;
+                (rr_all_sj[sj_id - 1].strand ? plus_sjs : minus_sjs).emplace_back(sj_id);
+            }
         }
 
         std::unordered_set<int> consumed;
