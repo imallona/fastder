@@ -146,6 +146,11 @@ void Averager::compute_mean_coverage(std::vector<std::vector<BedGraphRow>>& all_
         return;
     }
 
+    // Reset state in case the same Averager instance is being reused. Stale
+    // chromosomes from a previous run would otherwise leak into find_ERs.
+    mean_intervals.clear();
+    expressed_regions.clear();
+
     auto chrom_samples = bucket_by_chrom(all_bedgraphs);
     const size_t total_samples = all_bedgraphs.size();
 

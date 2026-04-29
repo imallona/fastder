@@ -6,7 +6,7 @@ The tool aims to reconstruct expressed genes prior to splicing in an annotation-
 
 `fastder` takes genome-wide coverage files and splice junction coordinates as input. Coverage can be supplied as BedGraph by default, or as BigWig when the build was configured with `-DFASTDER_USE_LIBBIGWIG=ON`. The tool averages across samples and applies a coverage threshold to identify consecutive regions with above-threshold expression. It then stitches expressed regions (ERs) together when a splice junction in the input matches the end of one ER and the start of the next.
 
-Coverage is held in memory as a sparse list of intervals rather than a dense per-base vector. On chr21 this keeps the resident set in the low hundreds of MB instead of multiple GB at full hg38. The strand of each splice junction is read into the in-memory model but is not yet used by the stitching step; strand-aware stitching is planned and the data structures already carry the field.
+Coverage is held in memory as a sparse list of intervals rather than a dense per-base vector. On chr21 this keeps the resident set in the low hundreds of MB instead of multiple GB at full hg38. Splice junctions are partitioned by strand at the Integrator: each chromosome's expressed regions are walked once per strand, and chains built from junction-linked ERs are tagged `+` or `-`. Standalone ERs that no junction connected to a neighbour stay unstranded (`.`).
 
 
 ## Building
