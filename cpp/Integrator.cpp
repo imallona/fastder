@@ -123,6 +123,13 @@ void Integrator::stitch_one_strand(const std::string& chrom,
         }
         const auto sj_to_check = (sj_it == strand_sjs.end()) ? std::prev(strand_sjs.end()) : sj_it;
 
+        // TODO reject geometrically inconsistent stitches here, rather than
+        // only repairing them in write_to_gtf. When position_tolerance is
+        // larger than a short ER, the junctions matched to its two edges can
+        // snap past each other and imply a negative-length exon. write_to_gtf
+        // currently falls back to that ER's coverage extent; a cleaner fix is
+        // to refuse the stitch when position_tolerance exceeds the ER length
+        // or when the flanking junctions would produce a non-positive exon.
         if (is_similar(candidate, expressed_region, rr_all_sj[*sj_to_check - 1]))
         {
             const SJRow& used_sj = rr_all_sj[*sj_to_check - 1];
@@ -259,12 +266,23 @@ void Integrator::write_to_gtf(const std::string& output_path)
         for (unsigned int k = 0; k < ser.er_ids.size(); ++k)
         {
             if (ser.er_ids.at(k) == -1) continue; // spliced region, not an exon
-            uint64_t ex_start = ser.er_bounds.at(k).first;
-            uint64_t ex_end   = ser.er_bounds.at(k).second;
+            const uint64_t cov_start = ser.er_bounds.at(k).first;
+            const uint64_t cov_end   = ser.er_bounds.at(k).second;
+            uint64_t ex_start = cov_start;
+            uint64_t ex_end   = cov_end;
             if (k > 0 && ser.er_ids.at(k - 1) == -1)
                 ex_start = ser.er_bounds.at(k - 1).second; // splice acceptor
             if (k + 1 < ser.er_ids.size() && ser.er_ids.at(k + 1) == -1)
                 ex_end = ser.er_bounds.at(k + 1).first;    // splice donor
+            // Keep the snapped edges only if they still form a valid exon.
+            // With a large position_tolerance two junctions flanking a short
+            // expressed region can snap past each other (start >= end); fall
+            // back to the coverage extent, which is always a valid interval.
+            if (ex_start >= ex_end)
+            {
+                ex_start = cov_start;
+                ex_end   = cov_end;
+            }
             exons.emplace_back(ex_start, ex_end);
             exon_scores.push_back(ser.all_coverages.at(k).second);
         }
