@@ -18,7 +18,12 @@ int main(int argc, char* argv[]) {
     // default values (if not provided by user)
     int position_tolerance = 5;
     int min_length = 10;
-    double coverage_tolerance = 0.8;
+    // coverage_tolerance gates stitching on how similar two regions' coverage
+    // is. A splice junction is the real evidence that two exons belong to one
+    // transcript, and the coverage of exons within a transcript varies widely,
+    // so this gate defaults effectively off (any fold-difference passes) and
+    // is left as a knob only for deliberate experiments.
+    double coverage_tolerance = 1000.0;
     double min_coverage = 0.05;
     std::string directory;
     int cores = 10;
@@ -45,9 +50,12 @@ int main(int argc, char* argv[]) {
                 << "                               Example: --min-coverage 0.25\n\n"
                 << "  --position-tolerance <int>   Maximum permitted position deviation of splice junction and ER coordinates, in [nt]. Default = 5 nt.\n"
                 << "                               Example: --position-tolerance 5\n\n"
-                << "  --coverage-tolerance <float> Permitted coverage deviation within a stitched ER, as a proportion (e.g. 0.1 = 10 %).\n"
-                << "                               The value is not strictly bound in (0,1). Default = 0.7.\n"
-                << "                               Example: --coverage-tolerance 0.8\n\n"
+                << "  --coverage-tolerance <float> Permitted coverage deviation when stitching, as a proportion: a\n"
+                << "                               neighbour passes if its coverage is within (1 +/- tolerance)\n"
+                << "                               of the running average. Not bound to (0,1); 2.0 allows a 3x\n"
+                << "                               spread. Default = 1000 (the gate is effectively off, stitching\n"
+                << "                               is driven by splice junctions).\n"
+                << "                               Example: --coverage-tolerance 2.0\n\n"
                 << "  --cores <int>                Number of cores that fastder may use. Default = 10 cores.\n"
                 << "                               Example: --cores 23\n\n"
                 << "Example:\n"

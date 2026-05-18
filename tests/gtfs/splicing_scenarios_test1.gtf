@@ -9,5 +9,5 @@ chr1	fastder	exon	10001	10500	100	-	.	gene_id "gene1"; transcript_id "tx1"; exon
 chr1	fastder	exon	11001	12500	101	-	.	gene_id "gene1"; transcript_id "tx1"; exon_number "2";
 chr1	fastder	gene	12862	14540	29.7962	-	.	gene_id "gene2"; gene_name "faster_gene2";
 chr1	fastder	transcript	12862	14540	29.7962	-	.	gene_id "gene2"; transcript_id "tx2";
-chr1	fastder	exon	12862	12999	29	-	.	gene_id "gene2"; transcript_id "tx2"; exon_number "1";
-chr1	fastder	exon	14002	14540	30	-	.	gene_id "gene2"; transcript_id "tx2"; exon_number "2";
+chr1	fastder	exon	12862	13000	29	-	.	gene_id "gene2"; transcript_id "tx2"; exon_number "1";
+chr1	fastder	exon	14001	14540	30	-	.	gene_id "gene2"; transcript_id "tx2"; exon_number "2";
