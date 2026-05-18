@@ -11,9 +11,9 @@ chr1	fastder	transcript	11001	12500	216.566	.	.	gene_id "gene2"; transcript_id "
 chr1	fastder	exon	11001	12500	216.566	.	.	gene_id "gene2"; transcript_id "tx2"; exon_number "1";
 chr1	fastder	gene	12862	14540	183.631	-	.	gene_id "gene3"; gene_name "faster_gene3";
 chr1	fastder	transcript	12862	14540	183.631	-	.	gene_id "gene3"; transcript_id "tx3";
-chr1	fastder	exon	12862	13000	172.148	-	.	gene_id "gene3"; transcript_id "tx3"; exon_number "1";
+chr1	fastder	exon	12862	12999	172.148	-	.	gene_id "gene3"; transcript_id "tx3"; exon_number "1";
 chr1	fastder	exon	14001	14540	186.572	-	.	gene_id "gene3"; transcript_id "tx3"; exon_number "2";
 chr2	fastder	gene	10001	12500	218.92	-	.	gene_id "gene4"; gene_name "faster_gene4";
 chr2	fastder	transcript	10001	12500	218.92	-	.	gene_id "gene4"; transcript_id "tx4";
-chr2	fastder	exon	10001	10500	225.982	-	.	gene_id "gene4"; transcript_id "tx4"; exon_number "1";
+chr2	fastder	exon	10001	10499	225.982	-	.	gene_id "gene4"; transcript_id "tx4"; exon_number "1";
 chr2	fastder	exon	11001	12500	216.566	-	.	gene_id "gene4"; transcript_id "tx4"; exon_number "2";

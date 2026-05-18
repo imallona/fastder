@@ -400,7 +400,8 @@ TEST(SJRow, ParsesAndDiscardsUnusedRRColumns)
 
     EXPECT_TRUE(iss.good() || iss.eof());
     EXPECT_EQ(row.chrom, "chr1");
-    EXPECT_EQ(row.start, 143465342u);
+    // The RR start is 1-based; the parser shifts it to 0-based half-open.
+    EXPECT_EQ(row.start, 143465341u);
     EXPECT_EQ(row.end, 143470614u);
     EXPECT_EQ(row.length, 5273u);
     EXPECT_FALSE(row.strand);  // '-' -> false
@@ -422,7 +423,8 @@ TEST(SJRow, ParsesPlaceholderAnnotationColumns)
     SJRow row;
     iss >> row;
     EXPECT_EQ(row.chrom, "chr21");
-    EXPECT_EQ(row.start, 100u);
+    // 1-based RR start shifted to 0-based half-open by the parser.
+    EXPECT_EQ(row.start, 99u);
     EXPECT_EQ(row.end, 200u);
     EXPECT_TRUE(row.strand);   // '+'
     EXPECT_FALSE(row.annotated);
@@ -471,8 +473,9 @@ TEST(Parser, ChrFilterRetainsOnlyRequestedRows)
     EXPECT_EQ(parser.sj_id_remap[2], 2u);
     ASSERT_EQ(parser.rr_all_sj.size(), 2u);
     EXPECT_EQ(parser.rr_all_sj[0].chrom, "chr1");
-    EXPECT_EQ(parser.rr_all_sj[0].start, 100u);
-    EXPECT_EQ(parser.rr_all_sj[1].start, 500u);
+    // RR starts are 1-based; the parser shifts them to 0-based half-open.
+    EXPECT_EQ(parser.rr_all_sj[0].start, 99u);
+    EXPECT_EQ(parser.rr_all_sj[1].start, 499u);
 
     fs::remove_all(tmp);
 }

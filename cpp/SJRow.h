@@ -40,6 +40,13 @@ public:
             return is;
         }
         row.strand = (strand_ == '+'); // 1 if +
+        // The RR file gives 1-based inclusive intron coordinates (STAR
+        // SJ.out.tab convention). fastder works in 0-based half-open
+        // coordinates, like the BedGraph / BigWig coverage, so shift the
+        // start by one; the end already equals the 0-based half-open end.
+        // This keeps junction-to-ER comparisons and the exon-boundary
+        // snapping consistent with the coverage coordinates.
+        row.start -= 1;
         return is;
     }
 
