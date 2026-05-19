@@ -32,6 +32,15 @@ class Integrator
                            const std::vector<SJRow>& rr_all_sj,
                            std::unordered_set<int>& consumed_indices,
                            std::vector<StitchedER>& output);
+    // Splits expressed regions at fully contained splice junctions. A
+    // junction whose donor and acceptor both fall strictly inside one ER is
+    // evidence the ER merged two exons across a leaky or retained intron;
+    // the intron is dropped and the ER is replaced by its flanking pieces.
+    // Runs before stitch_up so the chain builder and write_to_gtf see the
+    // corrected boundaries. ERs with no contained junction are left as is.
+    void split_leaky_introns(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions,
+                             const std::unordered_map<std::string, std::vector<uint32_t>>& mm_chrom_sj,
+                             const std::vector<SJRow>& rr_all_sj);
     bool within_threshold(double val1, double val2) const;
     bool within_threshold(uint64_t val1, uint64_t val2) const;
     bool is_similar(const StitchedER& most_recent_er, const BedGraphRow& expressed_region, const SJRow& current_sj);

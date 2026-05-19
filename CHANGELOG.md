@@ -4,6 +4,17 @@ All notable changes to fastder are recorded in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `--split-leaky-introns` flag. When set, an expressed region is split
+  wherever a splice junction lies fully inside it, meaning both the junction
+  donor and acceptor fall strictly within the region. Such a junction is
+  evidence that coverage merged two exons across a leaky or retained intron.
+  The intron is removed and the region becomes its flanking pieces. Off by
+  default, so the region caller's output is unchanged unless the flag is
+  given. The split runs before stitching, so chain building and the GTF
+  writer see the corrected boundaries.
+
 ### Fixed
 
 - GTF output is now 1-based. fastder's internal coordinates are 0-based

@@ -164,6 +164,101 @@ void Integrator::stitch_one_strand(const std::string& chrom,
 }
 
 
+// Split expressed regions at fully contained splice junctions. A junction
+// whose donor and acceptor both fall strictly inside one ER means the ER
+// merged two exons across a leaky or retained intron. The contained introns
+// are collected, overlapping ones merged so alternative junctions inside the
+// same ER collapse to disjoint removal intervals, and the ER is replaced by
+// the exonic pieces between them. Each piece inherits the parent ER's
+// coverage and strand. ERs with no contained junction are left untouched.
+void Integrator::split_leaky_introns(
+        std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions,
+        const std::unordered_map<std::string, std::vector<uint32_t>>& mm_chrom_sj,
+        const std::vector<SJRow>& rr_all_sj)
+{
+    uint64_t added_regions = 0;
+    for (auto& chrom_ers : expressed_regions)
+    {
+        const std::string& chrom = chrom_ers.first;
+        std::vector<BedGraphRow>& ers = chrom_ers.second;
+        if (ers.empty()) continue;
+
+        const auto sjs_it = mm_chrom_sj.find(chrom);
+        if (sjs_it == mm_chrom_sj.end() || sjs_it->second.empty()) continue;
+
+        // intron [donor, acceptor) for every junction observed on this chrom,
+        // sorted by donor so the scan per ER can stop early
+        std::vector<std::pair<uint64_t, uint64_t>> introns;
+        introns.reserve(sjs_it->second.size());
+        for (uint32_t sj_id : sjs_it->second)
+        {
+            if (sj_id == 0 || sj_id - 1 >= rr_all_sj.size()) continue;
+            const SJRow& sj = rr_all_sj[sj_id - 1];
+            introns.emplace_back(sj.start, sj.end);
+        }
+        std::sort(introns.begin(), introns.end());
+
+        std::vector<BedGraphRow> refined;
+        refined.reserve(ers.size());
+        for (const BedGraphRow& er : ers)
+        {
+            // an intron is contained when its donor and acceptor both fall
+            // strictly inside the ER, leaving an exonic piece on either side
+            std::vector<std::pair<uint64_t, uint64_t>> contained;
+            for (const auto& intron : introns)
+            {
+                if (intron.first >= er.end) break;
+                if (intron.first > er.start && intron.second < er.end)
+                {
+                    contained.emplace_back(intron);
+                }
+            }
+            if (contained.empty())
+            {
+                refined.emplace_back(er);
+                continue;
+            }
+            // merge overlapping or touching introns into disjoint intervals
+            std::sort(contained.begin(), contained.end());
+            std::vector<std::pair<uint64_t, uint64_t>> merged;
+            for (const auto& intron : contained)
+            {
+                if (!merged.empty() && intron.first <= merged.back().second)
+                {
+                    merged.back().second = std::max(merged.back().second, intron.second);
+                }
+                else
+                {
+                    merged.emplace_back(intron);
+                }
+            }
+            // emit the exonic pieces between the removed introns
+            uint64_t piece_start = er.start;
+            for (const auto& intron : merged)
+            {
+                if (intron.first > piece_start)
+                {
+                    refined.emplace_back(BedGraphRow(chrom, piece_start, intron.first,
+                                                     er.coverage, er.strand));
+                }
+                piece_start = intron.second;
+            }
+            if (er.end > piece_start)
+            {
+                refined.emplace_back(BedGraphRow(chrom, piece_start, er.end,
+                                                 er.coverage, er.strand));
+            }
+        }
+        added_regions += refined.size() - ers.size();
+        std::sort(refined.begin(), refined.end(),
+                  [](const BedGraphRow& a, const BedGraphRow& b) { return a.start < b.start; });
+        ers = std::move(refined);
+    }
+    std::cout << "[INFO] split-leaky-introns split expressed regions into "
+              << added_regions << " additional pieces." << std::endl;
+}
+
+
 void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphRow>>& expressed_regions, const std::unordered_map<std::string, std::vector<uint32_t>>& mm_chrom_sj, const std::vector<SJRow>& rr_all_sj)
 {
     // Reset stitched_ERs in case the same Integrator instance is being

@@ -1124,3 +1124,74 @@ TEST(BigWig, BedGraphAndBigWigEquivalentExpressedRegions)
     fs::remove_all(tmp);
 #endif
 }
+
+TEST(LeakyIntronSplit, SplitsRegionAtContainedJunction)
+{
+    // one ER spans [10000, 12000); a junction intron [10500, 11000) sits
+    // fully inside it, so the ER splits into [10000, 10500) and [11000, 12000)
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11000, 500, '+', false), // id 1
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 12000, 100),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1};
+
+    Integrator integrator = Integrator(1000.0, 5);
+    integrator.split_leaky_introns(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    const auto& ers = expressed_regions["chr1"];
+    ASSERT_EQ(ers.size(), 2);
+    EXPECT_EQ(ers[0].start, 10000);
+    EXPECT_EQ(ers[0].end,   10500);
+    EXPECT_EQ(ers[1].start, 11000);
+    EXPECT_EQ(ers[1].end,   12000);
+}
+
+TEST(LeakyIntronSplit, KeepsRegionWhenJunctionTouchesEdge)
+{
+    // the junction donor coincides with the ER start, so it is not strictly
+    // contained and the ER is left as a single region
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10000, 10500, 500, '+', false), // id 1
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 12000, 100),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1};
+
+    Integrator integrator = Integrator(1000.0, 5);
+    integrator.split_leaky_introns(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    ASSERT_EQ(expressed_regions["chr1"].size(), 1);
+    EXPECT_EQ(expressed_regions["chr1"][0].start, 10000);
+    EXPECT_EQ(expressed_regions["chr1"][0].end,   12000);
+}
+
+TEST(LeakyIntronSplit, SplitsAtTwoContainedJunctions)
+{
+    // two contained junctions split the ER into three exonic pieces
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11000, 500, '+', false), // id 1
+        SJRow("chr1", 11500, 12000, 500, '+', false), // id 2
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 13000, 100),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1, 2};
+
+    Integrator integrator = Integrator(1000.0, 5);
+    integrator.split_leaky_introns(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    const auto& ers = expressed_regions["chr1"];
+    ASSERT_EQ(ers.size(), 3);
+    EXPECT_EQ(ers[0].start, 10000); EXPECT_EQ(ers[0].end, 10500);
+    EXPECT_EQ(ers[1].start, 11000); EXPECT_EQ(ers[1].end, 11500);
+    EXPECT_EQ(ers[2].start, 12000); EXPECT_EQ(ers[2].end, 13000);
+}
