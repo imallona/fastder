@@ -1,0 +1,10 @@
+#description: expressed region annotation of the genome based on BedGraph and MM / RR splice junction information.
+#provider: FASTDER
+#contact: martina.lavanya@gmail.com
+#format: gtf
+#date: 2026-5-19
+chr1	fastder	gene	10001	12500	100	-	.	gene_id "gene1"; gene_name "faster_gene1";
+chr1	fastder	transcript	10001	12500	100	-	.	gene_id "gene1"; transcript_id "tx1";
+chr1	fastder	exon	10001	10500	100	-	.	gene_id "gene1"; transcript_id "tx1"; exon_number "1";
+chr1	fastder	exon	11001	11012	100	-	.	gene_id "gene1"; transcript_id "tx1"; exon_number "2";
+chr1	fastder	exon	12001	12500	100	-	.	gene_id "gene1"; transcript_id "tx1"; exon_number "3";

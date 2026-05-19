@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
                 << "                               Example: --cores 23\n\n"
                 << "Example:\n"
                 << "  ./fastder --dir ../data --chr chr1 chr2 --position-tolerance 5 "
-                 "--min-coverage 0.05 --coverage-tolerance 0.7 --cores 23\n"
+                 "--min-coverage 0.05 --coverage-tolerance 2.0 --cores 23\n"
                 << std::endl;
 
     // parse command-line arguments

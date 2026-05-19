@@ -2,7 +2,7 @@
 
 All notable changes to fastder are recorded in this file.
 
-## [Unreleased]
+## [0.1.0] - 2026-05-19
 
 ### Fixed
 
@@ -16,7 +16,9 @@ All notable changes to fastder are recorded in this file.
   file carries 1-based inclusive intron coordinates (the STAR SJ.out.tab
   convention), but fastder works in 0-based half-open coordinates like the
   coverage. The mismatch left junction-snapped exon ends one base too long.
-  The RR parser now shifts the junction start by one on read.
+  The RR parser now shifts the junction start by one on read, and rejects a
+  junction start of 0, which is malformed under the 1-based convention,
+  rather than letting the unsigned subtraction wrap.
 
 ### Changed
 
@@ -31,3 +33,8 @@ All notable changes to fastder are recorded in this file.
   donor and acceptor coordinates instead of the coverage-derived expressed-
   region edges. Edges with no adjacent junction, namely the outer ends of a
   chain and both ends of a monoexonic region, keep the coverage extent.
+
+## [Legacy]
+
+Baseline forked from the upstream fastder repository, which carried no tagged
+release. Versioned history begins at 0.1.0 above.

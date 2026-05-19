@@ -46,6 +46,13 @@ public:
         // start by one; the end already equals the 0-based half-open end.
         // This keeps junction-to-ER comparisons and the exon-boundary
         // snapping consistent with the coverage coordinates.
+        // A valid 1-based start is at least 1; a 0 here means malformed or
+        // truncated input. Reject the row instead of underflowing uint64_t.
+        if (row.start == 0)
+        {
+            is.setstate(std::ios::failbit);
+            return is;
+        }
         row.start -= 1;
         return is;
     }
