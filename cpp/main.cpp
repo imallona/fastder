@@ -27,9 +27,6 @@ int main(int argc, char* argv[]) {
     double min_coverage = 0.05;
     std::string directory;
     int cores = 10;
-    // when true, split an expressed region at any splice junction that lies
-    // fully inside it (leaky / retained intron). Off by default.
-    bool do_split_leaky_introns = false;
 
     std::cout
     << "\n "
@@ -51,6 +48,8 @@ int main(int argc, char* argv[]) {
                    "                               Normalization is done in-place by library size. \n"
                    "                               Default = 0.05 CPM.\n"
                 << "                               Example: --min-coverage 0.25\n\n"
+                << "  --min-length <int>           Minimum length, in [nt], for a region to qualify as an expressed region (ER). Default = 10 nt.\n"
+                << "                               Example: --min-length 10\n\n"
                 << "  --position-tolerance <int>   Maximum permitted position deviation of splice junction and ER coordinates, in [nt]. Default = 5 nt.\n"
                 << "                               Example: --position-tolerance 5\n\n"
                 << "  --coverage-tolerance <float> Permitted coverage deviation when stitching, as a proportion: a\n"
@@ -59,11 +58,6 @@ int main(int argc, char* argv[]) {
                 << "                               spread. Default = 1000 (the gate is effectively off, stitching\n"
                 << "                               is driven by splice junctions).\n"
                 << "                               Example: --coverage-tolerance 2.0\n\n"
-                << "  --split-leaky-introns        Split an expressed region wherever a splice junction lies\n"
-                << "                               fully inside it; such a junction is evidence the region\n"
-                << "                               merged two exons across a leaky or retained intron. The\n"
-                << "                               intron is dropped and the region becomes its flanking\n"
-                << "                               pieces. Takes no value; off by default.\n\n"
                 << "  --cores <int>                Number of cores that fastder may use. Default = 10 cores.\n"
                 << "                               Example: --cores 23\n\n"
                 << "Example:\n"
@@ -120,10 +114,6 @@ int main(int argc, char* argv[]) {
         {
             directory = argv[++i];
         }
-        else if (arg == "--split-leaky-introns")
-        {
-            do_split_leaky_introns = true;
-        }
         else
         {
             std::cout << "[ERROR] Unknown argument '" << argv[i] << "'" << std::endl;
@@ -156,10 +146,6 @@ int main(int argc, char* argv[]) {
 
     // use splice junctions to stitch together expressed regions
     Integrator integrator = Integrator(coverage_tolerance, position_tolerance);
-    if (do_split_leaky_introns)
-    {
-        integrator.split_leaky_introns(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
-    }
     integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
 
 
