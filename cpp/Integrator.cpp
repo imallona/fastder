@@ -123,11 +123,23 @@ void Integrator::stitch_one_strand(const std::string& chrom,
         }
         const auto sj_to_check = (sj_it == strand_sjs.end()) ? std::prev(strand_sjs.end()) : sj_it;
 
+        // TODO reject geometrically inconsistent stitches here, rather than
+        // only repairing them in write_to_gtf. When position_tolerance is
+        // larger than a short ER, the junctions matched to its two edges can
+        // snap past each other and imply a negative-length exon. write_to_gtf
+        // currently falls back to that ER's coverage extent; a cleaner fix is
+        // to refuse the stitch when position_tolerance exceeds the ER length
+        // or when the flanking junctions would produce a non-positive exon.
         if (is_similar(candidate, expressed_region, rr_all_sj[*sj_to_check - 1]))
         {
+            const SJRow& used_sj = rr_all_sj[*sj_to_check - 1];
             uint64_t sj_length = expressed_region.start - ers[candidate.er_ids.back()].end;
-            candidate.append(-1, sj_length, 0.0);
-            candidate.append(i, expressed_region.length, expressed_region.coverage);
+            // record the splice junction's [donor, acceptor] for the spliced
+            // region, and the ER's coverage extent for the appended exon, so
+            // write_to_gtf can snap exon edges to the splice sites.
+            candidate.append(-1, sj_length, 0.0, used_sj.start, used_sj.end);
+            candidate.append(i, expressed_region.length, expressed_region.coverage,
+                             expressed_region.start, expressed_region.end);
             int er_count = 0;
             for (int id : candidate.er_ids) if (id >= 0) ++er_count;
             if (er_count > max_chain_len) max_chain_len = er_count;
@@ -240,28 +252,57 @@ void Integrator::write_to_gtf(const std::string& output_path)
 
     for (unsigned int i = 0; i < this->stitched_ERs.size(); ++i)
     {
-        // each stitched_er is both a gene and a transcript
-        GTFRow gtf_row = GTFRow(stitched_ERs[i], "gene", i + 1);
+        const StitchedER& ser = stitched_ERs[i];
+
+        // Resolve each exon's [start, end]. The default is the ER's
+        // coverage-derived extent; an edge that abuts a splice junction is
+        // snapped to the junction coordinate (the donor for an exon end, the
+        // acceptor for the next exon start), since the junction marks the
+        // exact splice site. Edges with no adjacent junction, namely the
+        // outer ends of a chain and both ends of a monoexonic ER, keep the
+        // coverage extent.
+        std::vector<std::pair<uint64_t, uint64_t>> exons;
+        std::vector<double> exon_scores;
+        for (unsigned int k = 0; k < ser.er_ids.size(); ++k)
+        {
+            if (ser.er_ids.at(k) == -1) continue; // spliced region, not an exon
+            const uint64_t cov_start = ser.er_bounds.at(k).first;
+            const uint64_t cov_end   = ser.er_bounds.at(k).second;
+            uint64_t ex_start = cov_start;
+            uint64_t ex_end   = cov_end;
+            if (k > 0 && ser.er_ids.at(k - 1) == -1)
+                ex_start = ser.er_bounds.at(k - 1).second; // splice acceptor
+            if (k + 1 < ser.er_ids.size() && ser.er_ids.at(k + 1) == -1)
+                ex_end = ser.er_bounds.at(k + 1).first;    // splice donor
+            // Keep the snapped edges only if they still form a valid exon.
+            // With a large position_tolerance two junctions flanking a short
+            // expressed region can snap past each other (start >= end); fall
+            // back to the coverage extent, which is always a valid interval.
+            if (ex_start >= ex_end)
+            {
+                ex_start = cov_start;
+                ex_end   = cov_end;
+            }
+            exons.emplace_back(ex_start, ex_end);
+            exon_scores.push_back(ser.all_coverages.at(k).second);
+        }
+        if (exons.empty()) continue;
+
+        // each stitched_er is both a gene and a transcript; their span runs
+        // from the first exon start to the last exon end
+        GTFRow gtf_row = GTFRow(ser, "gene", i + 1);
+        gtf_row.start = exons.front().first;
+        gtf_row.end   = exons.back().second;
         out << gtf_row << std::endl;
         gtf_row.change_feature("transcript", i + 1, 0);
         out << gtf_row << std::endl;
-        int exon_nr = 1;
-        // add the ERs within the stitched_er
-        for (unsigned int k = 0; k < stitched_ERs[i].er_ids.size(); ++k)
+        for (unsigned int e = 0; e < exons.size(); ++e)
         {
-            if (stitched_ERs[i].er_ids.at(k) != -1){
-                gtf_row.change_feature("exon", i + 1, exon_nr);
-                // need to include SJ length as well
-                gtf_row.end = gtf_row.start + stitched_ERs.at(i).all_coverages.at(k).first; // start + length = end
-                gtf_row.score = stitched_ERs.at(i).all_coverages.at(k).second; // use the per-exon average coverage here instead of the overall coverage
-                out << gtf_row << std::endl;
-                gtf_row.start = gtf_row.end;
-                ++exon_nr;
-            }
-            else
-            {
-                gtf_row.start += stitched_ERs.at(i).all_coverages.at(k).first; // add length of the SJ
-            }
+            gtf_row.change_feature("exon", i + 1, e + 1);
+            gtf_row.start = exons.at(e).first;
+            gtf_row.end   = exons.at(e).second;
+            gtf_row.score = exon_scores.at(e);
+            out << gtf_row << std::endl;
         }
     }
     out.close();

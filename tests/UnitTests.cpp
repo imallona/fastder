@@ -400,7 +400,8 @@ TEST(SJRow, ParsesAndDiscardsUnusedRRColumns)
 
     EXPECT_TRUE(iss.good() || iss.eof());
     EXPECT_EQ(row.chrom, "chr1");
-    EXPECT_EQ(row.start, 143465342u);
+    // The RR start is 1-based; the parser shifts it to 0-based half-open.
+    EXPECT_EQ(row.start, 143465341u);
     EXPECT_EQ(row.end, 143470614u);
     EXPECT_EQ(row.length, 5273u);
     EXPECT_FALSE(row.strand);  // '-' -> false
@@ -422,7 +423,8 @@ TEST(SJRow, ParsesPlaceholderAnnotationColumns)
     SJRow row;
     iss >> row;
     EXPECT_EQ(row.chrom, "chr21");
-    EXPECT_EQ(row.start, 100u);
+    // 1-based RR start shifted to 0-based half-open by the parser.
+    EXPECT_EQ(row.start, 99u);
     EXPECT_EQ(row.end, 200u);
     EXPECT_TRUE(row.strand);   // '+'
     EXPECT_FALSE(row.annotated);
@@ -471,8 +473,9 @@ TEST(Parser, ChrFilterRetainsOnlyRequestedRows)
     EXPECT_EQ(parser.sj_id_remap[2], 2u);
     ASSERT_EQ(parser.rr_all_sj.size(), 2u);
     EXPECT_EQ(parser.rr_all_sj[0].chrom, "chr1");
-    EXPECT_EQ(parser.rr_all_sj[0].start, 100u);
-    EXPECT_EQ(parser.rr_all_sj[1].start, 500u);
+    // RR starts are 1-based; the parser shifts them to 0-based half-open.
+    EXPECT_EQ(parser.rr_all_sj[0].start, 99u);
+    EXPECT_EQ(parser.rr_all_sj[1].start, 499u);
 
     fs::remove_all(tmp);
 }
@@ -959,6 +962,124 @@ TEST(GTFRow, SerializesMinusStrandFromStitchedER)
     while (std::getline(is, field, '\t')) cols.push_back(field);
     ASSERT_GE(cols.size(), 7u);
     EXPECT_EQ(cols[6], "-");
+}
+
+
+// operator<< converts the 0-based half-open internal coordinates to GTF's
+// 1-based inclusive convention: the start column is start + 1, the end
+// column equals end unchanged.
+TEST(GTFRow, SerializesOneBasedInclusiveCoordinates)
+{
+    BedGraphRow er("chr1", 10000, 10500, 100.0);
+    StitchedER s(er, 0);
+    GTFRow row(s, "exon", 1);
+    row.start = 10000;
+    row.end = 10500;
+
+    std::ostringstream os;
+    os << row;
+    std::istringstream is(os.str());
+    std::vector<std::string> cols;
+    std::string field;
+    while (std::getline(is, field, '\t')) cols.push_back(field);
+    ASSERT_GE(cols.size(), 5u);
+    EXPECT_EQ(cols[3], "10001"); // start + 1
+    EXPECT_EQ(cols[4], "10500"); // end unchanged
+}
+
+
+// Helper: read a GTF written by write_to_gtf and return the exon rows as
+// (start, end) pairs in file order. Columns 4 and 5 are 1-based inclusive.
+static std::vector<std::pair<uint64_t, uint64_t>> read_gtf_exons(const std::string& path)
+{
+    std::vector<std::pair<uint64_t, uint64_t>> exons;
+    std::ifstream in(path);
+    std::string line;
+    while (std::getline(in, line))
+    {
+        if (line.empty() || line[0] == '#') continue;
+        std::istringstream is(line);
+        std::vector<std::string> cols;
+        std::string field;
+        while (std::getline(is, field, '\t')) cols.push_back(field);
+        if (cols.size() < 5 || cols[2] != "exon") continue;
+        exons.emplace_back(std::stoull(cols[3]), std::stoull(cols[4]));
+    }
+    return exons;
+}
+
+
+// write_to_gtf snaps exon edges to the flanking splice junctions. In a
+// three-ER chain the internal edges must equal the junction donor / acceptor
+// coordinates rather than the coverage extent; the outer edges keep coverage.
+TEST(IntegratorWriteGtf, ExonEdgesSnapToSpliceJunctions)
+{
+    // SJ coordinates are 0-based half-open here, as fastder holds them after
+    // parsing; the SJRow constructor stores them verbatim.
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11000, 500, '-', false),
+        SJRow("chr1", 13000, 14000, 1000, '-', false)
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10498, 100),
+        BedGraphRow("chr1", 11002, 12999, 101),
+        BedGraphRow("chr1", 14003, 14540, 30)
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1, 2};
+    // coverage_tolerance off so the chain forms regardless of exon coverage.
+    Integrator integrator = Integrator(1000.0, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+    const std::string path = "../../tests/gtfs/write_gtf_snap_test.gtf";
+    integrator.write_to_gtf(path);
+
+    auto exons = read_gtf_exons(path);
+    ASSERT_EQ(exons.size(), 3u);
+    // Internal edges snap to the junctions, serialized 1-based inclusive.
+    EXPECT_EQ(exons[0].second, 10500u); // first exon end -> donor 10500
+    EXPECT_EQ(exons[1].first, 11001u);  // second exon start -> acceptor 11000
+    EXPECT_EQ(exons[1].second, 13000u); // second exon end -> donor 13000
+    EXPECT_EQ(exons[2].first, 14001u);  // third exon start -> acceptor 14000
+}
+
+
+// When the junctions flanking a short middle exon snap past each other, so
+// the snapped start lands at or beyond the snapped end, write_to_gtf must
+// fall back to that ER's coverage extent so the emitted exon stays valid.
+TEST(IntegratorWriteGtf, FallsBackToCoverageExtentWhenJunctionsSnapPast)
+{
+    // SJ coordinates are 0-based half-open. The right junction's donor (11004)
+    // lies before the left junction's acceptor (11008), so snapping the middle
+    // exon to them would invert it; the coverage extent is used instead.
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 10500, 11008, 508, '-', false),
+        SJRow("chr1", 11004, 12000, 996, '-', false)
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 10000, 10500, 100),
+        BedGraphRow("chr1", 11000, 11012, 100),
+        BedGraphRow("chr1", 12000, 12500, 100)
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1, 2};
+    Integrator integrator = Integrator(1000.0, 50);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+    const std::string path = "../../tests/gtfs/write_gtf_fallback_test.gtf";
+    integrator.write_to_gtf(path);
+
+    auto exons = read_gtf_exons(path);
+    ASSERT_EQ(exons.size(), 3u);
+    // Every emitted exon is a valid interval.
+    for (const auto& ex : exons)
+    {
+        EXPECT_LE(ex.first, ex.second);
+    }
+    // The middle exon falls back to its coverage extent 11000..11012,
+    // serialized 1-based inclusive as 11001..11012.
+    EXPECT_EQ(exons[1].first, 11001u);
+    EXPECT_EQ(exons[1].second, 11012u);
 }
 
 

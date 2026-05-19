@@ -28,7 +28,11 @@ class GTFRow
     // overload output operator for GTFRow
     friend std::ostream& operator<< (std::ostream& os, const GTFRow& row)
     {
-        return os << row.seqname << "\t" << row.source << "\t" << row.feature << "\t" << row.start << "\t" << row.end << "\t" <<
+        // Internal coordinates are 0-based half-open (BedGraph / BigWig
+        // convention). GTF is 1-based inclusive, so the start is shifted by
+        // one. The end needs no shift: a 0-based half-open end equals the
+        // 1-based inclusive end of the same interval.
+        return os << row.seqname << "\t" << row.source << "\t" << row.feature << "\t" << (row.start + 1) << "\t" << row.end << "\t" <<
             row.score << "\t" << row.strand << "\t" << row.frame << "\t" << row.attribute;
 
     }

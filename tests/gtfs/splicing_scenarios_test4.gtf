@@ -2,19 +2,19 @@
 #provider: FASTDER
 #contact: martina.lavanya@gmail.com
 #format: gtf
-#date: 2026-4-28
-chr1	fastder	gene	10000	12500	100.75	.	.	gene_id "gene1"; gene_name "faster_gene1";
-chr1	fastder	transcript	10000	12500	100.75	.	.	gene_id "gene1"; transcript_id "tx1";
-chr1	fastder	exon	10000	10500	100	.	.	gene_id "gene1"; transcript_id "tx1"; exon_number "1";
-chr1	fastder	exon	11000	12500	101	.	.	gene_id "gene1"; transcript_id "tx1"; exon_number "2";
-chr1	fastder	gene	12861	15300	29.784	.	.	gene_id "gene2"; gene_name "faster_gene2";
-chr1	fastder	transcript	12861	15300	29.784	.	.	gene_id "gene2"; transcript_id "tx2";
-chr1	fastder	exon	12861	12999	29	.	.	gene_id "gene2"; transcript_id "tx2"; exon_number "1";
-chr1	fastder	exon	14001	14201	30	.	.	gene_id "gene2"; transcript_id "tx2"; exon_number "2";
-chr1	fastder	exon	14999	15300	30	.	.	gene_id "gene2"; transcript_id "tx2"; exon_number "3";
-chr1	fastder	gene	15300	15600	37	.	.	gene_id "gene3"; gene_name "faster_gene3";
-chr1	fastder	transcript	15300	15600	37	.	.	gene_id "gene3"; transcript_id "tx3";
-chr1	fastder	exon	15300	15600	37	.	.	gene_id "gene3"; transcript_id "tx3"; exon_number "1";
-chr1	fastder	gene	15600	15800	87	.	.	gene_id "gene4"; gene_name "faster_gene4";
-chr1	fastder	transcript	15600	15800	87	.	.	gene_id "gene4"; transcript_id "tx4";
-chr1	fastder	exon	15600	15800	87	.	.	gene_id "gene4"; transcript_id "tx4"; exon_number "1";
+#date: 2026-5-18
+chr1	fastder	gene	10001	12500	100.75	-	.	gene_id "gene1"; gene_name "faster_gene1";
+chr1	fastder	transcript	10001	12500	100.75	-	.	gene_id "gene1"; transcript_id "tx1";
+chr1	fastder	exon	10001	10500	100	-	.	gene_id "gene1"; transcript_id "tx1"; exon_number "1";
+chr1	fastder	exon	11001	12500	101	-	.	gene_id "gene1"; transcript_id "tx1"; exon_number "2";
+chr1	fastder	gene	12862	15300	29.784	-	.	gene_id "gene2"; gene_name "faster_gene2";
+chr1	fastder	transcript	12862	15300	29.784	-	.	gene_id "gene2"; transcript_id "tx2";
+chr1	fastder	exon	12862	13000	29	-	.	gene_id "gene2"; transcript_id "tx2"; exon_number "1";
+chr1	fastder	exon	14001	14200	30	-	.	gene_id "gene2"; transcript_id "tx2"; exon_number "2";
+chr1	fastder	exon	15001	15300	30	-	.	gene_id "gene2"; transcript_id "tx2"; exon_number "3";
+chr1	fastder	gene	15301	15600	37	.	.	gene_id "gene3"; gene_name "faster_gene3";
+chr1	fastder	transcript	15301	15600	37	.	.	gene_id "gene3"; transcript_id "tx3";
+chr1	fastder	exon	15301	15600	37	.	.	gene_id "gene3"; transcript_id "tx3"; exon_number "1";
+chr1	fastder	gene	15601	15800	87	.	.	gene_id "gene4"; gene_name "faster_gene4";
+chr1	fastder	transcript	15601	15800	87	.	.	gene_id "gene4"; transcript_id "tx4";
+chr1	fastder	exon	15601	15800	87	.	.	gene_id "gene4"; transcript_id "tx4"; exon_number "1";

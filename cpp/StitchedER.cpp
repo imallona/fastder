@@ -14,6 +14,7 @@ StitchedER::StitchedER(const BedGraphRow& expressed_region, int er_id)
     er_ids = {er_id};
     across_er_coverage = expressed_region.coverage;
     all_coverages = {std::make_pair(expressed_region.length, expressed_region.coverage)};
+    er_bounds = {std::make_pair(expressed_region.start, expressed_region.end)};
     total_length = expressed_region.length;
 }
 
@@ -39,11 +40,14 @@ double StitchedER::get_avg_coverage() const
     return sum / full_length;
 }
 
-// note that er_id is 0-indexed
-void StitchedER::append(int er_id, unsigned int length, double coverage)
+// note that er_id is 0-indexed. lo/hi is the ER's coverage extent, or the
+// splice junction's [donor, acceptor] when er_id is -1 (a spliced region).
+void StitchedER::append(int er_id, unsigned int length, double coverage,
+                        uint64_t lo, uint64_t hi)
 {
     er_ids.emplace_back(er_id); // -1 for spliced regions
     all_coverages.push_back({std::make_pair(length, coverage)});
+    er_bounds.push_back(std::make_pair(lo, hi));
     // only update avg coverage if an exon was added
     if (er_id != -1)
     {
