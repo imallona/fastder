@@ -85,13 +85,6 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
         const char* start = p;
         while (p < end && (*p != ' ' && *p != '\t')) ++p;
         std::string_view chrom(start, p - start);
-        // column 1 has entries like chr1 or chr21 --> must have length 4 or 5
-
-        // skip line if it contains artificial chromosomes (such as chrUn_GL000218v1)
-        if (chrom.size() != 4 && chrom.size() != 5) {
-            continue;
-        }
-        row.chrom = std::string(chrom);
 
         // skip whitespace and tab
         while (p < end &&  (*p == ' ' || *p == '\t')) p++;
@@ -127,13 +120,26 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
         }
         row.coverage = static_cast<float>(coverage_as_int);
 
+        // calculate total number of reads that map to this bp interval
+        row.length = row.end - row.start;
+        // end is not inclusive, since row1.end == row2.start of the next row
+        row.total_reads = static_cast<uint64_t>(row.length * row.coverage); //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
+
+        // Library size covers the whole file, not only the chromosomes in
+        // --chr. Summing over the selection instead would make the same
+        // --min-coverage a different absolute cutoff in every run. Artificial
+        // chromosomes (chrUn_GL000218v1 and the like) are part of the library
+        // too, so they are counted here and dropped below, where canonical
+        // names are the ones 4 or 5 characters long.
+        library_size += row.total_reads;
+
+        if (chrom.size() != 4 && chrom.size() != 5) {
+            continue;
+        }
+        row.chrom = std::string(chrom);
+
         // check if the row is part of the chromosome list passed by the user
         if (chromosomes_set.contains(row.chrom)){
-            // calculate total number of reads that map to this bp interval
-            row.length = row.end - row.start;
-            // end is not inclusive, since row1.end == row2.start of the next row
-            row.total_reads = row.length * row.coverage; //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
-            library_size += row.total_reads;
             bedgraph.emplace_back(row);
         }
 
@@ -214,6 +220,12 @@ void Parser::read_mm(std::string filename) {
         {
             std::cerr << "[ERROR] could not open MM file " << filename << std::endl;
         }
+        // Read support per junction, summed over the loaded samples. Only
+        // filled when a threshold is set: at 8 bytes per junction this costs
+        // about 76 MB on the 9.5M junctions of a full hg38 RR file.
+        std::vector<uint64_t> junction_reads;
+        if (min_junction_reads > 0) junction_reads.assign(rr_all_sj.size(), 0);
+
         std::string line;
         bool seen_header = false;
         uint64_t nr_of_sj = 0;
@@ -271,16 +283,44 @@ void Parser::read_mm(std::string filename) {
 
             // Look up the new (post-filter) sj_id via the remap built in
             // read_rr. A 0 means this junction was on a chromosome we don't
-            // analyse and was dropped — skip without ever touching rr_all_sj.
+            // analyse and was dropped, so skip without ever touching rr_all_sj.
             if (sj_id == 0 || sj_id - 1 >= sj_id_remap.size()) continue;
             const uint32_t new_sj_id = sj_id_remap[sj_id - 1];
             if (new_sj_id == 0) continue;
 
             if (mm_ids.contains(mm_id))
             {
+                if (min_junction_reads > 0)
+                {
+                    // Third column of the MatrixMarket triplet: reads
+                    // supporting this junction in this sample. res2 left p
+                    // before mm_id, so advance past it first.
+                    p = res2.ptr;
+                    while (p < end && (*p == ' ' || *p == '\t')) p++;
+                    unsigned int count = 0;
+                    if (std::from_chars(p, end, count).ec == std::errc{})
+                    {
+                        junction_reads[new_sj_id - 1] += count;
+                    }
+                }
                 // mm_chrom_sj stores *new* sj_ids (indexes into rr_all_sj).
                 mm_chrom_sj[rr_all_sj[new_sj_id - 1].chrom].emplace_back(new_sj_id);
             }
+        }
+
+        if (min_junction_reads > 0)
+        {
+            uint64_t dropped = 0;
+            for (auto& [chrom, ids] : mm_chrom_sj)
+            {
+                auto kept = std::remove_if(ids.begin(), ids.end(),
+                    [&](uint32_t id) { return junction_reads[id - 1] < min_junction_reads; });
+                dropped += static_cast<uint64_t>(std::distance(kept, ids.end()));
+                ids.erase(kept, ids.end());
+            }
+            std::cout << "[INFO] Dropped " << dropped
+                      << " junction entries below --min-junction-reads "
+                      << min_junction_reads << std::endl;
         }
         //std::cout << "[INFO] MM file contains " << count_lines << " lines"<< std::endl;
         //assert(sj_occ_in_samples <= count_lines);
@@ -452,6 +492,30 @@ std::vector<BedGraphRow> Parser::read_bigwig(const std::string& filename, uint64
         return intervals;
     }
 
+    // Whole-file library size, as in read_bedgraph. The total summary holds
+    // this sum already, so no extra intervals are read. A file written without
+    // a summary block needs the full walk instead.
+    if (fp->hdr->summaryOffset != 0)
+    {
+        library_size += static_cast<uint64_t>(fp->hdr->sumData);
+    }
+    else
+    {
+        for (int64_t k = 0; k < fp->cl->nKeys; ++k)
+        {
+            const std::string chrom = fp->cl->chrom[k];
+            bwOverlappingIntervals_t* o = bwGetOverlappingIntervals(
+                fp, const_cast<char*>(chrom.c_str()), 0, fp->cl->len[k]);
+            if (!o) continue;
+            for (uint32_t i = 0; i < o->l; ++i)
+            {
+                library_size += static_cast<uint64_t>(
+                    static_cast<double>(o->end[i] - o->start[i]) * o->value[i]);
+            }
+            bwDestroyOverlappingIntervals(o);
+        }
+    }
+
     // Iterate the BigWig's chromosomes. Skip any that the user did not
     // request via --chr (chromosomes_set), matching read_bedgraph's filter.
     for (int64_t k = 0; k < fp->cl->nKeys; ++k)
@@ -476,8 +540,7 @@ std::vector<BedGraphRow> Parser::read_bigwig(const std::string& filename, uint64
                             static_cast<double>(o->value[i]),
                             strand);
             row.length = static_cast<unsigned int>(row.end - row.start);
-            row.total_reads = static_cast<unsigned int>(row.length * row.coverage);
-            library_size += row.total_reads;
+            row.total_reads = static_cast<uint64_t>(row.length * row.coverage);
             intervals.emplace_back(std::move(row));
         }
         bwDestroyOverlappingIntervals(o);
