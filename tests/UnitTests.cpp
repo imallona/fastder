@@ -13,7 +13,16 @@
 #include "Parser.h"
 #include "Averager.h"
 #include "GTFRow.h"
+#include <filesystem>
 #include <sstream>
+
+// Written GTFs go under the working directory, which ctest sets to the build
+// tree.
+static std::string gtf_output_path(const std::string& name)
+{
+    std::filesystem::create_directories("gtfs");
+    return "gtfs/" + name;
+}
 
 TEST(SpliceTestChromOne, TwoStitchedERsTwoSJs)
 {
@@ -35,7 +44,7 @@ TEST(SpliceTestChromOne, TwoStitchedERsTwoSJs)
     mm_chrom_sj["chr1"] = {1, 2};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test1.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test1.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 2); // two ERs
     EXPECT_EQ(integrator.stitched_ERs.at(0).er_ids.size(), 3); // two ERs, one spliced region
 }
@@ -63,7 +72,7 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJs)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test2.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test2.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 2); // two ERs
     EXPECT_EQ(integrator.stitched_ERs.at(1).er_ids.size(), 5); // three ERs, two spliced region
 }
@@ -91,7 +100,7 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJsAndTailingER)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test3.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test3.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 3); // three ERs
     EXPECT_EQ(integrator.stitched_ERs.at(2).er_ids.size(), 1);
 }
@@ -120,7 +129,7 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJsAndTwoTailingERs)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test4.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test4.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 4); // three ERs
     EXPECT_EQ(integrator.stitched_ERs.at(3).er_ids.size(), 1);
 }
@@ -150,7 +159,7 @@ TEST(SpliceTestChromOne, NoSJUsed)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test5.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test5.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 7); // 7 ERs, no stitching
 
 }
@@ -180,7 +189,7 @@ TEST(SpliceTestChromOne, MiddleSJUnusedTailingSJsUsed)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test6.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test6.gtf"));
 
     EXPECT_EQ(integrator.stitched_ERs.size(), 5); // five ERs, 2x2 stitching
     EXPECT_EQ(integrator.stitched_ERs.at(0).er_ids.size(), 3);
@@ -212,7 +221,7 @@ TEST(SpliceTestChromOne, FirstERNotStitchedRemainingERsStitched)
     mm_chrom_sj["chr1"] = {1, 2};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test7.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test7.gtf"));
 
     EXPECT_EQ(integrator.stitched_ERs.size(), 3); // five ERs, 2x2 stitching
     EXPECT_EQ(integrator.stitched_ERs.at(0).er_ids.size(), 1);
@@ -250,7 +259,7 @@ TEST(SpliceTestChromOneAndTwo, BothChrHaveMatchingSJs)
     mm_chrom_sj["chr1"] = {3, 4};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test8.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test8.gtf"));
 
     int count_chr1 = 0;
     int largest_ser_chr1 = 0;
@@ -367,7 +376,7 @@ TEST(Parser, TestWrongChromosomeOrder)
     }
 
     // convert to GTF format
-    std::string output_path = "../../tests/gtfs/parser_test3.gtf";
+    std::string output_path = gtf_output_path("parser_test3.gtf");
     integrator.write_to_gtf(output_path);
 }
 
@@ -1031,7 +1040,7 @@ TEST(IntegratorWriteGtf, ExonEdgesSnapToSpliceJunctions)
     // coverage_tolerance off so the chain forms regardless of exon coverage.
     Integrator integrator = Integrator(1000.0, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    const std::string path = "../../tests/gtfs/write_gtf_snap_test.gtf";
+    const std::string path = gtf_output_path("write_gtf_snap_test.gtf");
     integrator.write_to_gtf(path);
 
     auto exons = read_gtf_exons(path);
@@ -1066,7 +1075,7 @@ TEST(IntegratorWriteGtf, FallsBackToCoverageExtentWhenJunctionsSnapPast)
     mm_chrom_sj["chr1"] = {1, 2};
     Integrator integrator = Integrator(1000.0, 50);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    const std::string path = "../../tests/gtfs/write_gtf_fallback_test.gtf";
+    const std::string path = gtf_output_path("write_gtf_fallback_test.gtf");
     integrator.write_to_gtf(path);
 
     auto exons = read_gtf_exons(path);
