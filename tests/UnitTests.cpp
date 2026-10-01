@@ -1447,3 +1447,34 @@ TEST(MinJunctionReads, SumsSupportAcrossSamplesAndDropsWeakJunctions)
 
     fs::remove_all(tmp);
 }
+
+
+// A sample is recognised by its external id in the file's base name, as a
+// whole token.
+TEST(SampleMatching, IdMustBeAWholeTokenOfTheBaseName)
+{
+    EXPECT_TRUE(Parser::names_sample("/data/run/es.all.bw", "es"));
+    EXPECT_FALSE(Parser::names_sample("/data/run/mes.all.bw", "es"));
+    EXPECT_FALSE(Parser::names_sample("/data/cores16/a3.all.bw", "es"));
+    EXPECT_TRUE(Parser::names_sample("sra.base_sums.SRP166282_SRR8083867.ALL.bw", "SRR8083867"));
+    EXPECT_TRUE(Parser::names_sample("gtex.base_sums.BRAIN_GTEX-1117F-0011-R10b-SM-GI4VE.1.ALL.bw",
+                                     "GTEX-1117F-0011-R10b-SM-GI4VE.1"));
+    EXPECT_FALSE(Parser::names_sample("es.all.bw", ""));
+}
+
+TEST(SampleMatching, EachFileMapsToItsOwnSample)
+{
+    Parser parser("dummy_path", {"chr1"}, 1);
+    parser.rail_id_to_ext_id = {{1, "es"}, {2, "mes"}, {3, "mixed"}, {4, "mixed_internal"}};
+    parser.fill_up({"/study/cores16/es.all.bw", "/study/cores16/mes.all.bw",
+                    "/study/cores16/mixed_internal.all.bw"});
+    EXPECT_EQ(parser.mm_ids, (std::unordered_set<unsigned int>{1u, 2u, 4u}));
+}
+
+TEST(SampleMatching, UnknownFileAddsNoSample)
+{
+    Parser parser("dummy_path", {"chr1"}, 1);
+    parser.rail_id_to_ext_id = {{1, "es"}};
+    parser.fill_up({"/study/other.all.bw"});
+    EXPECT_TRUE(parser.mm_ids.empty());
+}

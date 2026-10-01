@@ -31,6 +31,7 @@ public:
     void read_rr(std::string filename);
     void read_url_csv(std::string filename);
     void fill_up(std::vector<std::string> bedgraph_files);
+    static bool names_sample(const std::string& file, const std::string& external_id);
 
     // TODO add function get_rail_id_from_filename(filename)?
     unsigned int user_cores;

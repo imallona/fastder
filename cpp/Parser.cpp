@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <BedGraphRow.h>
 #include <cassert>
+#include <cctype>
 #include <algorithm>
 #include <thread>
 #include <atomic>
@@ -364,29 +365,58 @@ void Parser::read_url_csv(std::string filename)
 
 // creates a map of rail_id to mm_id in rail_id_to_mm_id
 // bedgraph_files contains the file names of all samples
+// True when external_id occurs in the file's base name as a whole token: the
+// character on either side, if any, is not alphanumeric. Directory names are
+// not searched, and "es" does not name "mes.all.bw".
+bool Parser::names_sample(const std::string& file, const std::string& external_id)
+{
+    if (external_id.empty()) return false;
+    const std::string base = std::filesystem::path(file).filename().string();
+    for (size_t at = base.find(external_id); at != std::string::npos;
+         at = base.find(external_id, at + 1))
+    {
+        const size_t after = at + external_id.size();
+        const bool free_before = at == 0 || !std::isalnum(static_cast<unsigned char>(base[at - 1]));
+        const bool free_after = after == base.size() || !std::isalnum(static_cast<unsigned char>(base[after]));
+        if (free_before && free_after) return true;
+    }
+    return false;
+}
+
 void Parser::fill_up(std::vector<std::string> bedgraph_files)
 {
-    //fill up rail_id_to_mm_id
+    for (auto& sample : rail_id_to_ext_id)
+    {
+        sample.second.erase(std::remove(sample.second.begin(), sample.second.end(), '"'),
+            sample.second.end());
+    }
+
+    // mm_id is the rank of the sample's rail id across the study, from 1.
     for (auto& bedgraph_file : bedgraph_files)
     {
-        // add the sample and its mm_id (= the rank of the rail id across the study, so all files in total) to rail_id_to_mm
-        // [&] references all necessary variables i.e. the required context (here: filename)
-        auto it = std::find_if(rail_id_to_ext_id.begin(), rail_id_to_ext_id.end(), [&](auto& sample)
+        // the external id is part of the filename for all three sources GTEX, TCGA and SRA.
+        // When several ids name the file, the longest one is the sample.
+        size_t best = rail_id_to_ext_id.size();
+        for (size_t i = 0; i < rail_id_to_ext_id.size(); ++i)
         {
-            // search for the external_id in rail_id_to_ext_id and then obtain the rail_id
-            // the external id is part of the filename for all three sources GTEX, TCGA and SRA
-	        sample.second.erase(std::remove(sample.second.begin(), sample.second.end(), '"'),
-	            sample.second.end());
-            return bedgraph_file.find(sample.second) != std::string::npos;
-        });
-        if (it != rail_id_to_ext_id.end())
-        {
-            unsigned int mm_id = std::distance(rail_id_to_ext_id.begin(), it) + 1; // std::distance counts the steps between two iterators --> mm_id is 1 too small, so add 1
-            mm_ids.insert(mm_id);
+            const std::string& external_id = rail_id_to_ext_id[i].second;
+            if (!names_sample(bedgraph_file, external_id)) continue;
+            if (best == rail_id_to_ext_id.size()
+                || external_id.size() > rail_id_to_ext_id[best].second.size())
+            {
+                best = i;
+            }
         }
-        else
+        if (best == rail_id_to_ext_id.size())
         {
             std::cerr << "[ERROR] File " << bedgraph_file << " has no rail_id! Check that the external_id is contained in the sample file name. " << std::endl;
+            continue;
+        }
+        const unsigned int mm_id = best + 1;
+        if (!mm_ids.insert(mm_id).second)
+        {
+            std::cerr << "[ERROR] File " << bedgraph_file << " names sample "
+                      << rail_id_to_ext_id[best].second << ", which another file already does. " << std::endl;
         }
     }
 }

@@ -16,6 +16,10 @@ All notable changes to fastder are recorded in this file.
   reads. Regions on unrequested chromosomes still never reach the output.
 - `BedGraphRow::total_reads` is 64-bit. It holds length times coverage, which
   overflows 32 bits on a long interval at high coverage.
+- A coverage file is matched to its sample by the external id as a whole token
+  of the file's base name. The id was searched anywhere in the path, so
+  `mes.all.bw` was taken for sample `es`, and a directory name could match
+  too. A sample matched to the wrong file contributed no junctions.
 - Unit tests write their GTFs under the build tree. `tests/gtfs/` was tracked,
   so each test run changed eleven files. The directory is removed.
 
