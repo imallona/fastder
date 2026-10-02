@@ -100,7 +100,7 @@ that the tool will only output expressed regions on chromosome 1, and will ignor
 
 Coverage is normalized to CPM against the library size of the whole input file, which is the sum of length times coverage over every chromosome present, including any that `--chr` leaves out. `--chr` restricts which regions are reported, not the denominator.
 
-So a single-chromosome run divides by the same number as a genome-wide run on the same sample, and `--min-coverage 0.05` means one absolute cutoff in both. The practical consequence is that running `--chr chr19` reports far fewer regions than it would if the denominator were chr19 alone: the denominator is roughly fifty times larger. Pick the threshold for the library, not for the chromosome.
+So a single-chromosome run divides by the same number as a genome-wide run on the same sample, and `--min-coverage 0.005` means one absolute cutoff in both. The practical consequence is that running `--chr chr19` reports far fewer regions than it would if the denominator were chr19 alone: the denominator is roughly fifty times larger. Pick the threshold for the library, not for the chromosome.
 
 This matches how `recount3` defines its AUC, the sum of base-pair coverage over the whole genome, and derfinder's `getTotalMapped()` default of all chromosomes.
 
@@ -137,8 +137,8 @@ Optional inputs:
                                                 
    --min-coverage <float>                       Minimum coverage [CPM] required for a region to qualify as an ER.
                                                 Normalized in-place by library size.
-                                                Default: 0.05 CPM
-                                                Example: --min-coverage 0.25
+                                                Default: 0.005 CPM
+                                                Example: --min-coverage 0.01
    
    --position-tolerance <int>                   Maximum allowed positional deviation between splice junction and ER coordinates [bp].
                                                 Default: 5 bp
@@ -160,7 +160,7 @@ Example:
    --chr chr1 chr2 \
    --position-tolerance 5 \
    --min-length 10 \
-   --min-coverage 0.05 \
+   --min-coverage 0.005 \
    --cores 10
 ```
 

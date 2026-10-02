@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
     // so this gate defaults effectively off (any fold-difference passes) and
     // is left as a knob only for deliberate experiments.
     double coverage_tolerance = 1000.0;
-    double min_coverage = 0.05;
+    double min_coverage = 0.005;
     unsigned int min_junction_reads = 0;
     bool no_stitch = false;
     std::string directory;
@@ -55,8 +55,8 @@ int main(int argc, char* argv[]) {
                    "                               run and in a genome-wide one. Running one chromosome therefore\n"
                    "                               reports far fewer regions than dividing by that chromosome\n"
                    "                               alone would. This matches the recount3 AUC convention.\n"
-                   "                               Default = 0.05 CPM.\n"
-                << "                               Example: --min-coverage 0.25\n\n"
+                   "                               Default = 0.005 CPM.\n"
+                << "                               Example: --min-coverage 0.01\n\n"
                 << "  --min-length <int>           Minimum length, in [nt], for a region to qualify as an expressed region (ER). Default = 10 nt.\n"
                 << "                               Example: --min-length 10\n\n"
                 << "  --position-tolerance <int>   Maximum permitted position deviation of splice junction and ER coordinates, in [nt]. Default = 5 nt.\n"
@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
                 << "                               Example: --cores 23\n\n"
                 << "Example:\n"
                 << "  ./fastder --dir ../data --chr chr1 chr2 --position-tolerance 5 "
-                 "--min-coverage 0.05 --coverage-tolerance 2.0 --cores 23\n"
+                 "--min-coverage 0.005 --coverage-tolerance 2.0 --cores 23\n"
                 << std::endl;
 
     // parse command-line arguments
