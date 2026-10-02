@@ -37,8 +37,7 @@ All notable changes to fastder are recorded in this file.
 
 ### Changed
 
-- `--min-coverage` defaults to 0.005 CPM, was 0.05. CPM is relative to the
-  whole library, and 0.05 left out most expressed exons.
+- `--min-coverage` defaults to 0.005 CPM.
 
 ## [0.1.0] - 2026-05-19
 
