@@ -6,6 +6,7 @@ All notable changes to fastder are recorded in this file.
 
 ### Fixed
 
+- Parsing uses at most `--cores` threads. The MM file takes one of them.
 - Coverage is normalized by the whole library, not by the chromosomes the run
   loaded. `library_size` was summed only over the chromosomes named in
   `--chr`, so the same `--min-coverage` was a different absolute cutoff in a

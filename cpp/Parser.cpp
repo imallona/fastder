@@ -421,8 +421,14 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
     }
 }
 
+unsigned int Parser::coverage_threads(unsigned int user_cores, unsigned int nof_samples) {
+    unsigned int available = user_cores > 1 ? user_cores - 1 : 1;
+    return std::max(1u, std::min(available, nof_samples));
+}
+
 void Parser::read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigned int nof_threads) {
-    std::cout << "[INFO] fastder is using " << nof_threads + 1 << " threads for parsing." << std::endl;
+    std::cout << "[INFO] fastder is using " << nof_threads + (user_cores > 1 ? 1 : 0)
+              << " threads for parsing." << std::endl;
     // reserve space
     all_bedgraphs.resize(bedgraph_files.size());
 
@@ -648,16 +654,16 @@ void Parser::search_directory() {
     std::cout << "[INFO] User provided " << mm_ids.size() << " samples." << std::endl;
 
     unsigned int nof_samples =  mm_ids.size();
-    unsigned int nof_threads = std::min(user_cores, nof_samples);
+    unsigned int nof_threads = coverage_threads(user_cores, nof_samples);
 
-    // launch separate thread to parse MM file
     std::cout << "[FILE] Processing MM File " << mm_file << std::endl;
-    std::thread mm_thread(&Parser::read_mm, this, mm_file);
-
-    // parse all bedgraph files concurrently
-    read_all_bedgraphs(bedgraph_files, nof_threads);
-
-    // stop MM thread
-    mm_thread.join();
+    if (user_cores > 1) {
+        std::thread mm_thread(&Parser::read_mm, this, mm_file);
+        read_all_bedgraphs(bedgraph_files, nof_threads);
+        mm_thread.join();
+    } else {
+        read_mm(mm_file);
+        read_all_bedgraphs(bedgraph_files, nof_threads);
+    }
 
 }
