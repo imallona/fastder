@@ -1478,3 +1478,15 @@ TEST(SampleMatching, UnknownFileAddsNoSample)
     parser.fill_up({"/study/other.all.bw"});
     EXPECT_TRUE(parser.mm_ids.empty());
 }
+
+TEST(Parser, ParsingStaysWithinTheRequestedCores)
+{
+    // one core: the MM file and the coverage files are read one after the other
+    EXPECT_EQ(Parser::coverage_threads(1, 10), 1u);
+    // the MM file takes one of the requested cores
+    EXPECT_EQ(Parser::coverage_threads(2, 10), 1u);
+    EXPECT_EQ(Parser::coverage_threads(4, 10), 3u);
+    // never more coverage threads than samples
+    EXPECT_EQ(Parser::coverage_threads(16, 10), 10u);
+    EXPECT_EQ(Parser::coverage_threads(0, 10), 1u);
+}
