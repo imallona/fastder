@@ -210,8 +210,11 @@ void Integrator::stitch_up(std::unordered_map<std::string, std::vector<BedGraphR
 
         std::unordered_set<int> consumed;
         std::vector<StitchedER> chrom_stitched;
-        if (!plus_sjs.empty())  stitch_one_strand(chrom, '+', plus_sjs,  ers, rr_all_sj, consumed, chrom_stitched);
-        if (!minus_sjs.empty()) stitch_one_strand(chrom, '-', minus_sjs, ers, rr_all_sj, consumed, chrom_stitched);
+        if (stitching_enabled)
+        {
+            if (!plus_sjs.empty())  stitch_one_strand(chrom, '+', plus_sjs,  ers, rr_all_sj, consumed, chrom_stitched);
+            if (!minus_sjs.empty()) stitch_one_strand(chrom, '-', minus_sjs, ers, rr_all_sj, consumed, chrom_stitched);
+        }
 
         for (int i = 0; i < static_cast<int>(ers.size()); ++i)
         {

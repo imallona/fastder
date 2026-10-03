@@ -13,7 +13,16 @@
 #include "Parser.h"
 #include "Averager.h"
 #include "GTFRow.h"
+#include <filesystem>
 #include <sstream>
+
+// Written GTFs go under the working directory, which ctest sets to the build
+// tree.
+static std::string gtf_output_path(const std::string& name)
+{
+    std::filesystem::create_directories("gtfs");
+    return "gtfs/" + name;
+}
 
 TEST(SpliceTestChromOne, TwoStitchedERsTwoSJs)
 {
@@ -35,7 +44,7 @@ TEST(SpliceTestChromOne, TwoStitchedERsTwoSJs)
     mm_chrom_sj["chr1"] = {1, 2};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test1.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test1.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 2); // two ERs
     EXPECT_EQ(integrator.stitched_ERs.at(0).er_ids.size(), 3); // two ERs, one spliced region
 }
@@ -63,7 +72,7 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJs)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test2.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test2.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 2); // two ERs
     EXPECT_EQ(integrator.stitched_ERs.at(1).er_ids.size(), 5); // three ERs, two spliced region
 }
@@ -91,7 +100,7 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJsAndTailingER)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test3.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test3.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 3); // three ERs
     EXPECT_EQ(integrator.stitched_ERs.at(2).er_ids.size(), 1);
 }
@@ -120,7 +129,7 @@ TEST(SpliceTestChromOne, StitchedERWithThreeERsTwoSJsAndTwoTailingERs)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test4.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test4.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 4); // three ERs
     EXPECT_EQ(integrator.stitched_ERs.at(3).er_ids.size(), 1);
 }
@@ -150,7 +159,7 @@ TEST(SpliceTestChromOne, NoSJUsed)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test5.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test5.gtf"));
     EXPECT_EQ(integrator.stitched_ERs.size(), 7); // 7 ERs, no stitching
 
 }
@@ -180,7 +189,7 @@ TEST(SpliceTestChromOne, MiddleSJUnusedTailingSJsUsed)
     mm_chrom_sj["chr1"] = {1, 2, 3};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test6.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test6.gtf"));
 
     EXPECT_EQ(integrator.stitched_ERs.size(), 5); // five ERs, 2x2 stitching
     EXPECT_EQ(integrator.stitched_ERs.at(0).er_ids.size(), 3);
@@ -212,7 +221,7 @@ TEST(SpliceTestChromOne, FirstERNotStitchedRemainingERsStitched)
     mm_chrom_sj["chr1"] = {1, 2};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test7.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test7.gtf"));
 
     EXPECT_EQ(integrator.stitched_ERs.size(), 3); // five ERs, 2x2 stitching
     EXPECT_EQ(integrator.stitched_ERs.at(0).er_ids.size(), 1);
@@ -250,7 +259,7 @@ TEST(SpliceTestChromOneAndTwo, BothChrHaveMatchingSJs)
     mm_chrom_sj["chr1"] = {3, 4};
     Integrator integrator = Integrator(0.1, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    integrator.write_to_gtf("../../tests/gtfs/splicing_scenarios_test8.gtf");
+    integrator.write_to_gtf(gtf_output_path("splicing_scenarios_test8.gtf"));
 
     int count_chr1 = 0;
     int largest_ser_chr1 = 0;
@@ -367,7 +376,7 @@ TEST(Parser, TestWrongChromosomeOrder)
     }
 
     // convert to GTF format
-    std::string output_path = "../../tests/gtfs/parser_test3.gtf";
+    std::string output_path = gtf_output_path("parser_test3.gtf");
     integrator.write_to_gtf(output_path);
 }
 
@@ -1031,7 +1040,7 @@ TEST(IntegratorWriteGtf, ExonEdgesSnapToSpliceJunctions)
     // coverage_tolerance off so the chain forms regardless of exon coverage.
     Integrator integrator = Integrator(1000.0, 5);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    const std::string path = "../../tests/gtfs/write_gtf_snap_test.gtf";
+    const std::string path = gtf_output_path("write_gtf_snap_test.gtf");
     integrator.write_to_gtf(path);
 
     auto exons = read_gtf_exons(path);
@@ -1066,7 +1075,7 @@ TEST(IntegratorWriteGtf, FallsBackToCoverageExtentWhenJunctionsSnapPast)
     mm_chrom_sj["chr1"] = {1, 2};
     Integrator integrator = Integrator(1000.0, 50);
     integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
-    const std::string path = "../../tests/gtfs/write_gtf_fallback_test.gtf";
+    const std::string path = gtf_output_path("write_gtf_fallback_test.gtf");
     integrator.write_to_gtf(path);
 
     auto exons = read_gtf_exons(path);
@@ -1241,4 +1250,243 @@ TEST(BigWig, BedGraphAndBigWigEquivalentExpressedRegions)
 
     fs::remove_all(tmp);
 #endif
+}
+// Library size is the whole file's signal, so a --min-coverage threshold means
+// the same absolute cutoff whichever chromosomes --chr selects.
+
+TEST(LibrarySize, BedGraphCountsChromosomesOutsideTheSelection)
+{
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_libsize_bg";
+    fs::create_directories(tmp);
+    auto bg_path = (tmp / "sample.bedGraph").string();
+    {
+        std::ofstream out(bg_path);
+        out << "chr1\t0\t100\t10\n";               // 1000, selected
+        out << "chr2\t0\t100\t5\n";                // 500, not selected
+        out << "chrUn_GL000218v1\t0\t100\t7\n";    // 700, artificial, never analysed
+    }
+
+    Parser parser("dummy_path", {"chr1"}, 1);
+    uint64_t library_size = 0;
+    auto rows = parser.read_bedgraph(bg_path, library_size);
+
+    EXPECT_EQ(library_size, 2200u);
+    ASSERT_EQ(rows.size(), 1u);
+    EXPECT_EQ(rows[0].chrom, "chr1");
+
+    fs::remove_all(tmp);
+}
+
+TEST(LibrarySize, TotalReadsDoesNotOverflowThirtyTwoBits)
+{
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_libsize_overflow";
+    fs::create_directories(tmp);
+    auto bg_path = (tmp / "sample.bedGraph").string();
+    {
+        // 1e6 bases at coverage 5000 is 5e9, above the 32-bit ceiling of ~4.29e9.
+        std::ofstream out(bg_path);
+        out << "chr1\t0\t1000000\t5000\n";
+    }
+
+    Parser parser("dummy_path", {"chr1"}, 1);
+    uint64_t library_size = 0;
+    auto rows = parser.read_bedgraph(bg_path, library_size);
+
+    ASSERT_EQ(rows.size(), 1u);
+    EXPECT_EQ(rows[0].total_reads, 5000000000ull);
+    EXPECT_EQ(library_size, 5000000000ull);
+
+    fs::remove_all(tmp);
+}
+
+TEST(LibrarySize, BigWigSummaryIsBaseWeighted)
+{
+#ifndef FASTDER_USE_LIBBIGWIG
+    GTEST_SKIP() << "libBigWig support is off; rebuild with -DFASTDER_USE_LIBBIGWIG=ON";
+#else
+    // bigWig.h documents hdr->sumData only as "the sum of all values in the
+    // file". read_bigwig relies on it being the base-weighted sum, matching
+    // read_bedgraph's length * coverage, so pin that here.
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_libsize_bw";
+    fs::create_directories(tmp);
+    auto bw_path = (tmp / "sample.bw").string();
+
+    const std::vector<std::tuple<uint32_t, uint32_t, float>> intervals = {
+        {0,   100, 10.0f},   // 1000
+        {200, 400, 5.0f},    // 1000
+    };
+    write_test_bigwig(bw_path, "chr1", 1000, intervals);
+
+    Parser parser("dummy_path", {"chr1"}, 1);
+    uint64_t library_size = 0;
+    auto rows = parser.read_bigwig(bw_path, library_size, '.');
+
+    ASSERT_EQ(rows.size(), 2u);
+    EXPECT_EQ(library_size, 2000u);
+
+    fs::remove_all(tmp);
+#endif
+}
+
+// --no-stitch: every expressed region is emitted alone, with coverage-derived
+// edges. Compare against the default run on the same input.
+
+TEST(NoStitch, EmitsEveryRegionSeparatelyWithoutSnapping)
+{
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 1100, 1300, 200, '+', false), // id 1, joins the two ERs
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj = {
+        {"chr1", {1}},
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> ers = {
+        {"chr1", {
+            BedGraphRow("chr1", 1000, 1100, 10.0),
+            BedGraphRow("chr1", 1300, 1400, 10.0),
+        }},
+    };
+
+    Integrator stitched(1000.0, 5);
+    stitched.stitch_up(ers, mm_chrom_sj, rr_all_sj);
+    ASSERT_EQ(stitched.stitched_ERs.size(), 1u);
+
+    Integrator unstitched(1000.0, 5);
+    unstitched.stitching_enabled = false;
+    unstitched.stitch_up(ers, mm_chrom_sj, rr_all_sj);
+
+    ASSERT_EQ(unstitched.stitched_ERs.size(), 2u);
+    for (const auto& ser : unstitched.stitched_ERs)
+    {
+        EXPECT_EQ(ser.strand, '.');
+        int exons = 0;
+        for (int id : ser.er_ids) if (id >= 0) ++exons;
+        EXPECT_EQ(exons, 1);
+    }
+    EXPECT_EQ(unstitched.stitched_ERs[0].start, 1000u);
+    EXPECT_EQ(unstitched.stitched_ERs[0].end,   1100u);
+    EXPECT_EQ(unstitched.stitched_ERs[1].start, 1300u);
+    EXPECT_EQ(unstitched.stitched_ERs[1].end,   1400u);
+}
+
+// --min-junction-reads: support is summed across the loaded samples, and the
+// default of 0 must leave the junction set exactly as it was.
+
+TEST(MinJunctionReads, DefaultOfZeroKeepsEveryJunction)
+{
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_mjr_zero";
+    fs::create_directories(tmp);
+    auto rr_path = (tmp / "test.RR").string();
+    auto mm_path = (tmp / "test.MM").string();
+    {
+        std::ofstream rr(rr_path);
+        rr << "chr1\t1101\t1300\t200\t+\t0\tGT\tAG\t0\t0\n";
+        rr << "chr1\t2101\t2300\t200\t+\t0\tGT\tAG\t0\t0\n";
+        std::ofstream mm(mm_path);
+        mm << "2 2 3\n";
+        mm << "1 1 1\n";   // junction 1, sample 1, 1 read
+        mm << "2 1 4\n";   // junction 2, sample 1, 4 reads
+        mm << "2 2 4\n";   // junction 2, sample 2, 4 reads
+    }
+
+    auto junction_ids = [&](unsigned int threshold)
+    {
+        Parser parser("dummy_path", {"chr1"}, 1);
+        parser.min_junction_reads = threshold;
+        parser.mm_ids = {1, 2};
+        parser.read_rr(rr_path);
+        parser.read_mm(mm_path);
+        return parser.mm_chrom_sj["chr1"];
+    };
+
+    EXPECT_EQ(junction_ids(0).size(), 3u);
+
+    fs::remove_all(tmp);
+}
+
+TEST(MinJunctionReads, SumsSupportAcrossSamplesAndDropsWeakJunctions)
+{
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_mjr_filter";
+    fs::create_directories(tmp);
+    auto rr_path = (tmp / "test.RR").string();
+    auto mm_path = (tmp / "test.MM").string();
+    {
+        std::ofstream rr(rr_path);
+        rr << "chr1\t1101\t1300\t200\t+\t0\tGT\tAG\t0\t0\n";   // junction 1
+        rr << "chr1\t2101\t2300\t200\t+\t0\tGT\tAG\t0\t0\n";   // junction 2
+        std::ofstream mm(mm_path);
+        mm << "2 2 3\n";
+        mm << "1 1 3\n";   // junction 1: 3 reads in one sample
+        mm << "2 1 2\n";   // junction 2: 2 + 2 = 4 reads over two samples
+        mm << "2 2 2\n";
+    }
+
+    auto kept = [&](unsigned int threshold)
+    {
+        Parser parser("dummy_path", {"chr1"}, 1);
+        parser.min_junction_reads = threshold;
+        parser.mm_ids = {1, 2};
+        parser.read_rr(rr_path);
+        parser.read_mm(mm_path);
+        std::unordered_set<uint32_t> ids;
+        for (uint32_t id : parser.mm_chrom_sj["chr1"]) ids.insert(id);
+        return ids;
+    };
+
+    // At 4, junction 1 (3 reads) goes and junction 2 (4 summed) stays. Summing
+    // across samples is what keeps junction 2: neither sample reaches 4 alone.
+    auto at_four = kept(4);
+    EXPECT_EQ(at_four.size(), 1u);
+    EXPECT_TRUE(at_four.contains(2u));
+
+    EXPECT_TRUE(kept(5).empty());
+
+    fs::remove_all(tmp);
+}
+
+
+// A sample is recognised by its external id in the file's base name, as a
+// whole token.
+TEST(SampleMatching, IdMustBeAWholeTokenOfTheBaseName)
+{
+    EXPECT_TRUE(Parser::names_sample("/data/run/es.all.bw", "es"));
+    EXPECT_FALSE(Parser::names_sample("/data/run/mes.all.bw", "es"));
+    EXPECT_FALSE(Parser::names_sample("/data/cores16/a3.all.bw", "es"));
+    EXPECT_TRUE(Parser::names_sample("sra.base_sums.SRP166282_SRR8083867.ALL.bw", "SRR8083867"));
+    EXPECT_TRUE(Parser::names_sample("gtex.base_sums.BRAIN_GTEX-1117F-0011-R10b-SM-GI4VE.1.ALL.bw",
+                                     "GTEX-1117F-0011-R10b-SM-GI4VE.1"));
+    EXPECT_FALSE(Parser::names_sample("es.all.bw", ""));
+}
+
+TEST(SampleMatching, EachFileMapsToItsOwnSample)
+{
+    Parser parser("dummy_path", {"chr1"}, 1);
+    parser.rail_id_to_ext_id = {{1, "es"}, {2, "mes"}, {3, "mixed"}, {4, "mixed_internal"}};
+    parser.fill_up({"/study/cores16/es.all.bw", "/study/cores16/mes.all.bw",
+                    "/study/cores16/mixed_internal.all.bw"});
+    EXPECT_EQ(parser.mm_ids, (std::unordered_set<unsigned int>{1u, 2u, 4u}));
+}
+
+TEST(SampleMatching, UnknownFileAddsNoSample)
+{
+    Parser parser("dummy_path", {"chr1"}, 1);
+    parser.rail_id_to_ext_id = {{1, "es"}};
+    parser.fill_up({"/study/other.all.bw"});
+    EXPECT_TRUE(parser.mm_ids.empty());
+}
+
+TEST(Parser, ParsingStaysWithinTheRequestedCores)
+{
+    // one core: the MM file and the coverage files are read one after the other
+    EXPECT_EQ(Parser::coverage_threads(1, 10), 1u);
+    // the MM file takes one of the requested cores
+    EXPECT_EQ(Parser::coverage_threads(2, 10), 1u);
+    EXPECT_EQ(Parser::coverage_threads(4, 10), 3u);
+    // never more coverage threads than samples
+    EXPECT_EQ(Parser::coverage_threads(16, 10), 10u);
+    EXPECT_EQ(Parser::coverage_threads(0, 10), 1u);
 }

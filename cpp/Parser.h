@@ -31,9 +31,17 @@ public:
     void read_rr(std::string filename);
     void read_url_csv(std::string filename);
     void fill_up(std::vector<std::string> bedgraph_files);
+    static bool names_sample(const std::string& file, const std::string& external_id);
+    // Threads that parse coverage files. With more than one core the MM file
+    // takes a thread of its own, so the two together stay within user_cores.
+    static unsigned int coverage_threads(unsigned int user_cores, unsigned int nof_samples);
 
     // TODO add function get_rail_id_from_filename(filename)?
     unsigned int user_cores;
+    // Minimum read support a junction needs, summed over the loaded samples,
+    // to be kept for stitching. 0 keeps every junction the MM file lists,
+    // which is what fastder did before the option existed.
+    unsigned int min_junction_reads = 0;
     std::string path;
     std::vector<std::string> chromosomes_vec; // for fast iteration
     std::unordered_set<std::string> chromosomes_set; // for fast check if chromosome is included

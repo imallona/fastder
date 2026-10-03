@@ -24,7 +24,9 @@ int main(int argc, char* argv[]) {
     // so this gate defaults effectively off (any fold-difference passes) and
     // is left as a knob only for deliberate experiments.
     double coverage_tolerance = 1000.0;
-    double min_coverage = 0.05;
+    double min_coverage = 0.005;
+    unsigned int min_junction_reads = 0;
+    bool no_stitch = false;
     std::string directory;
     int cores = 10;
 
@@ -43,11 +45,18 @@ int main(int argc, char* argv[]) {
                 << "  --dir <path> ...             [REQUIRED] Path to directory with input files (relative path to build directory or absolute path). \n"
                 << "                               Example: --dir ../../data/test_exon_skipping \n\n"
                 << "  --chr <chr1> <chr2> ...      List of chromosomes to process. Default = ALL.\n"
+                << "                               Restricts which regions are reported, not the CPM\n"
+                << "                               denominator: see --min-coverage.\n"
                 << "                               Example: --chr chr1 chr2 or --chr 1 2 \n\n"
                 << "  --min-coverage <float>       Coverage threshold to qualify as an expressed region (ER), in [CPM]. \n"
-                   "                               Normalization is done in-place by library size. \n"
-                   "                               Default = 0.05 CPM.\n"
-                << "                               Example: --min-coverage 0.25\n\n"
+                   "                               Coverage is normalized by the library size of the whole input\n"
+                   "                               file, including chromosomes --chr leaves out, so the same\n"
+                   "                               threshold means the same absolute cutoff in a single-chromosome\n"
+                   "                               run and in a genome-wide one. Running one chromosome therefore\n"
+                   "                               reports far fewer regions than dividing by that chromosome\n"
+                   "                               alone would. This matches the recount3 AUC convention.\n"
+                   "                               Default = 0.005 CPM.\n"
+                << "                               Example: --min-coverage 0.01\n\n"
                 << "  --min-length <int>           Minimum length, in [nt], for a region to qualify as an expressed region (ER). Default = 10 nt.\n"
                 << "                               Example: --min-length 10\n\n"
                 << "  --position-tolerance <int>   Maximum permitted position deviation of splice junction and ER coordinates, in [nt]. Default = 5 nt.\n"
@@ -58,11 +67,19 @@ int main(int argc, char* argv[]) {
                 << "                               spread. Default = 1000 (the gate is effectively off, stitching\n"
                 << "                               is driven by splice junctions).\n"
                 << "                               Example: --coverage-tolerance 2.0\n\n"
+                << "  --min-junction-reads <int>   Minimum read support a splice junction needs, summed over the\n"
+                << "                               loaded samples, to be used for stitching. Default = 0, which\n"
+                << "                               keeps every junction the MM file lists.\n"
+                << "                               Example: --min-junction-reads 5\n\n"
+                << "  --no-stitch                  Emit every expressed region on its own, without joining any\n"
+                << "                               across splice junctions. Exon edges are then not snapped to\n"
+                << "                               splice sites, since the snap coordinate comes from the\n"
+                << "                               junction that joined two regions. Off by default.\n\n"
                 << "  --cores <int>                Number of cores that fastder may use. Default = 10 cores.\n"
                 << "                               Example: --cores 23\n\n"
                 << "Example:\n"
                 << "  ./fastder --dir ../data --chr chr1 chr2 --position-tolerance 5 "
-                 "--min-coverage 0.05 --coverage-tolerance 2.0 --cores 23\n"
+                 "--min-coverage 0.005 --coverage-tolerance 2.0 --cores 23\n"
                 << std::endl;
 
     // parse command-line arguments
@@ -95,6 +112,14 @@ int main(int argc, char* argv[]) {
         else if (arg == "--cores")
         {
             cores = atoi(argv[++i]);
+        }
+        else if (arg == "--min-junction-reads")
+        {
+            min_junction_reads = static_cast<unsigned int>(atoi(argv[++i]));
+        }
+        else if (arg == "--no-stitch")
+        {
+            no_stitch = true;
         }
         else if (arg == "--min-length")
         {
@@ -131,6 +156,7 @@ int main(int argc, char* argv[]) {
     // parse files
     std::cout << "[INFO] Expecting to parse MM, RR, BedGraph and Metadata CSV files from " << directory << std::endl;
     Parser parser(directory, chromosomes, cores);
+    parser.min_junction_reads = min_junction_reads;
     parser.search_directory();
 
     // print parsing duration
@@ -146,6 +172,7 @@ int main(int argc, char* argv[]) {
 
     // use splice junctions to stitch together expressed regions
     Integrator integrator = Integrator(coverage_tolerance, position_tolerance);
+    integrator.stitching_enabled = !no_stitch;
     integrator.stitch_up(averager.expressed_regions, parser.mm_chrom_sj, parser.rr_all_sj);
 
 
