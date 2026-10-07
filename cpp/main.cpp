@@ -10,7 +10,9 @@
 #include "Averager.h"
 #include "GTFRow.h"
 #include "Integrator.h"
+#include "Arguments.h"
 #include <chrono>
+#include <cstdlib>
 #include <thread>
 int main(int argc, char* argv[]) {
 	auto start = std::chrono::high_resolution_clock::now();
@@ -82,6 +84,16 @@ int main(int argc, char* argv[]) {
                  "--min-coverage 0.005 --coverage-tolerance 2.0 --cores 23\n"
                 << std::endl;
 
+    auto value_of = [&](int& i) -> std::string
+    {
+        if (i + 1 >= argc)
+        {
+            std::cerr << "[ERROR] " << argv[i] << " needs a value" << std::endl;
+            std::exit(1);
+        }
+        return argv[++i];
+    };
+
     // parse command-line arguments
     for (int i = 1; i < argc; i++)
     {
@@ -107,15 +119,22 @@ int main(int argc, char* argv[]) {
         }
         else if (arg == "--position-tolerance")
         {
-            position_tolerance = atoi(argv[++i]);
+            position_tolerance = atoi(value_of(i).c_str());
         }
         else if (arg == "--cores")
         {
-            cores = atoi(argv[++i]);
+            cores = atoi(value_of(i).c_str());
         }
         else if (arg == "--min-junction-reads")
         {
-            min_junction_reads = static_cast<unsigned int>(atoi(argv[++i]));
+            const std::string text = value_of(i);
+            const auto count = parse_count(text);
+            if (!count)
+            {
+                std::cerr << "[ERROR] --min-junction-reads needs a non-negative integer, got '" << text << "'" << std::endl;
+                return 1;
+            }
+            min_junction_reads = *count;
         }
         else if (arg == "--no-stitch")
         {
@@ -123,21 +142,21 @@ int main(int argc, char* argv[]) {
         }
         else if (arg == "--min-length")
         {
-            min_length = atoi(argv[++i]);
+            min_length = atoi(value_of(i).c_str());
         }
         else if (arg == "--min-coverage")
         {
-            min_coverage = std::stod(argv[++i]);
+            min_coverage = std::stod(value_of(i));
         }
 
         else if (arg == "--coverage-tolerance")
         {
-            coverage_tolerance = std::stod(argv[++i]);
+            coverage_tolerance = std::stod(value_of(i));
         }
 
         else if (arg == "--dir")
         {
-            directory = argv[++i];
+            directory = value_of(i);
         }
         else
         {
@@ -204,8 +223,10 @@ int main(int argc, char* argv[]) {
 
 
     // convert to GTF format
-    std::string prefix = (directory.back() == '/') ? "FASTDER_RESULT_POS_TOL_" : "/FASTDER_RESULT_POS_TOL_";
-    std::string output_path = directory + prefix + std::to_string(position_tolerance) + "_MIN_COV_" + std::to_string(min_coverage) + "_COV_TOL_" + std::to_string(coverage_tolerance) + "_MIN_LENGTH_" + std::to_string(min_length) + ".gtf";
+    const std::string separator = (directory.back() == '/') ? "" : "/";
+    const std::string output_path = directory + separator
+        + result_file_name(position_tolerance, min_coverage, coverage_tolerance, min_length,
+                           min_junction_reads, no_stitch);
     integrator.write_to_gtf(output_path);
 
     // print duration

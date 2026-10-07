@@ -238,7 +238,7 @@ void Parser::read_mm(std::string filename) {
         {
             ++count_lines;
             // read in line by line
-            if (line.empty()) return;
+            if (line.empty()) continue;
             if (line[0] == '%') continue;
             if (!seen_header) {
                 std::istringstream iss(line);
@@ -383,8 +383,9 @@ bool Parser::names_sample(const std::string& file, const std::string& external_i
     return false;
 }
 
-void Parser::fill_up(std::vector<std::string> bedgraph_files)
+std::vector<std::string> Parser::fill_up(std::vector<std::string> bedgraph_files)
 {
+    std::vector<std::string> accepted_files;
     for (auto& sample : rail_id_to_ext_id)
     {
         sample.second.erase(std::remove(sample.second.begin(), sample.second.end(), '"'),
@@ -417,8 +418,11 @@ void Parser::fill_up(std::vector<std::string> bedgraph_files)
         {
             std::cerr << "[ERROR] File " << bedgraph_file << " names sample "
                       << rail_id_to_ext_id[best].second << ", which another file already does. " << std::endl;
+            continue;
         }
+        accepted_files.emplace_back(bedgraph_file);
     }
+    return accepted_files;
 }
 
 unsigned int Parser::coverage_threads(unsigned int user_cores, unsigned int nof_samples) {
@@ -537,6 +541,8 @@ std::vector<BedGraphRow> Parser::read_bigwig(const std::string& filename, uint64
     }
     else
     {
+        // Summed as a double and converted once, as the summary is.
+        double base_weighted_sum = 0.0;
         for (int64_t k = 0; k < fp->cl->nKeys; ++k)
         {
             const std::string chrom = fp->cl->chrom[k];
@@ -545,11 +551,11 @@ std::vector<BedGraphRow> Parser::read_bigwig(const std::string& filename, uint64
             if (!o) continue;
             for (uint32_t i = 0; i < o->l; ++i)
             {
-                library_size += static_cast<uint64_t>(
-                    static_cast<double>(o->end[i] - o->start[i]) * o->value[i]);
+                base_weighted_sum += static_cast<double>(o->end[i] - o->start[i]) * o->value[i];
             }
             bwDestroyOverlappingIntervals(o);
         }
+        library_size += static_cast<uint64_t>(base_weighted_sum);
     }
 
     // Iterate the BigWig's chromosomes. Skip any that the user did not
@@ -649,8 +655,8 @@ void Parser::search_directory() {
 
     std::cout << "[INFO] The study contains " << rail_id_to_ext_id.size() << " samples. " << std::endl;
 
-    // fill up rail_id_to_mm_id mapping for all rail_ids provided by the user
-    fill_up(bedgraph_files);
+    // One file per known sample, so the mean and the junctions cover the same samples.
+    bedgraph_files = fill_up(bedgraph_files);
     std::cout << "[INFO] User provided " << mm_ids.size() << " samples." << std::endl;
 
     unsigned int nof_samples =  mm_ids.size();

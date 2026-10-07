@@ -30,7 +30,8 @@ public:
     void read_mm(std::string filename);
     void read_rr(std::string filename);
     void read_url_csv(std::string filename);
-    void fill_up(std::vector<std::string> bedgraph_files);
+    // Returns the files accepted: one per known sample.
+    std::vector<std::string> fill_up(std::vector<std::string> bedgraph_files);
     static bool names_sample(const std::string& file, const std::string& external_id);
     // Threads that parse coverage files. With more than one core the MM file
     // takes a thread of its own, so the two together stay within user_cores.

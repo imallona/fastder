@@ -6,6 +6,11 @@ All notable changes to fastder are recorded in this file.
 
 ### Fixed
 
+- `--min-junction-reads` rejects missing, negative or non-numeric values.
+- A blank MM line no longer skips the junction filter.
+- Unmatched and duplicate coverage files are not averaged.
+- BigWig library size without a summary truncates once.
+- Output name carries `--min-junction-reads` and `--no-stitch` when set.
 - Parsing uses at most `--cores` threads. The MM file takes one of them.
 - Coverage is normalized by the whole library, not by the chromosomes the run
   loaded. `library_size` was summed only over the chromosomes named in

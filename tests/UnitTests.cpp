@@ -13,7 +13,9 @@
 #include "Parser.h"
 #include "Averager.h"
 #include "GTFRow.h"
+#include "Arguments.h"
 #include <filesystem>
+#include <fstream>
 #include <sstream>
 
 // Written GTFs go under the working directory, which ctest sets to the build
@@ -1331,6 +1333,40 @@ TEST(LibrarySize, BigWigSummaryIsBaseWeighted)
 #endif
 }
 
+TEST(LibrarySize, BigWigWithoutSummarySumsBeforeTruncating)
+{
+#ifndef FASTDER_USE_LIBBIGWIG
+    GTEST_SKIP() << "libBigWig support is off; rebuild with -DFASTDER_USE_LIBBIGWIG=ON";
+#else
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_libsize_bw_no_summary";
+    fs::create_directories(tmp);
+    auto bw_path = (tmp / "sample.bw").string();
+
+    const std::vector<std::tuple<uint32_t, uint32_t, float>> intervals = {
+        {0, 2, 0.75f},
+        {10, 12, 0.75f},
+    };
+    write_test_bigwig(bw_path, "chr1", 1000, intervals);
+
+    // Header bytes 44 to 51 hold the summary offset; zero means no summary.
+    {
+        std::fstream bw(bw_path, std::ios::in | std::ios::out | std::ios::binary);
+        bw.seekp(44);
+        const uint64_t no_summary = 0;
+        bw.write(reinterpret_cast<const char*>(&no_summary), sizeof(no_summary));
+    }
+
+    Parser parser("dummy_path", {"chr1"}, 1);
+    uint64_t library_size = 0;
+    parser.read_bigwig(bw_path, library_size, '.');
+
+    EXPECT_EQ(library_size, 3u);
+
+    fs::remove_all(tmp);
+#endif
+}
+
 // --no-stitch: every expressed region is emitted alone, with coverage-derived
 // edges. Compare against the default run on the same input.
 
@@ -1449,6 +1485,58 @@ TEST(MinJunctionReads, SumsSupportAcrossSamplesAndDropsWeakJunctions)
 }
 
 
+TEST(MinJunctionReads, BlankLineDoesNotSkipTheFilter)
+{
+    namespace fs = std::filesystem;
+    auto tmp = fs::temp_directory_path() / "fastder_test_mjr_blank_line";
+    fs::create_directories(tmp);
+    auto rr_path = (tmp / "test.RR").string();
+    auto mm_path = (tmp / "test.MM").string();
+    {
+        std::ofstream rr(rr_path);
+        rr << "chr1\t1101\t1300\t200\t+\t0\tGT\tAG\t0\t0\n";
+        rr << "chr1\t2101\t2300\t200\t+\t0\tGT\tAG\t0\t0\n";
+        std::ofstream mm(mm_path);
+        mm << "2 2 3\n";
+        mm << "1 1 1\n";
+        mm << "\n";
+        mm << "2 1 4\n";
+        mm << "2 2 4\n";
+        mm << "\n";
+    }
+
+    Parser parser("dummy_path", {"chr1"}, 1);
+    parser.min_junction_reads = 5;
+    parser.mm_ids = {1, 2};
+    parser.read_rr(rr_path);
+    parser.read_mm(mm_path);
+
+    EXPECT_EQ(parser.mm_chrom_sj["chr1"], (std::vector<uint32_t>{2u, 2u}));
+
+    fs::remove_all(tmp);
+}
+
+TEST(Arguments, CountIsAWholeNonNegativeInteger)
+{
+    EXPECT_EQ(parse_count("0"), 0u);
+    EXPECT_EQ(parse_count("5"), 5u);
+    EXPECT_FALSE(parse_count(""));
+    EXPECT_FALSE(parse_count("-1"));
+    EXPECT_FALSE(parse_count("five"));
+    EXPECT_FALSE(parse_count("5x"));
+    EXPECT_FALSE(parse_count("99999999999999999999"));
+}
+
+TEST(Arguments, ResultNameCarriesEverySettingThatChangesTheCalls)
+{
+    EXPECT_EQ(result_file_name(10, 0.05, 0.8, 10, 0, false),
+              "FASTDER_RESULT_POS_TOL_10_MIN_COV_0.050000_COV_TOL_0.800000_MIN_LENGTH_10.gtf");
+    EXPECT_EQ(result_file_name(10, 0.05, 0.8, 10, 5, false),
+              "FASTDER_RESULT_POS_TOL_10_MIN_COV_0.050000_COV_TOL_0.800000_MIN_LENGTH_10_MIN_JUNCTION_READS_5.gtf");
+    EXPECT_EQ(result_file_name(10, 0.05, 0.8, 10, 5, true),
+              "FASTDER_RESULT_POS_TOL_10_MIN_COV_0.050000_COV_TOL_0.800000_MIN_LENGTH_10_MIN_JUNCTION_READS_5_NO_STITCH.gtf");
+}
+
 // A sample is recognised by its external id in the file's base name, as a
 // whole token.
 TEST(SampleMatching, IdMustBeAWholeTokenOfTheBaseName)
@@ -1477,6 +1565,15 @@ TEST(SampleMatching, UnknownFileAddsNoSample)
     parser.rail_id_to_ext_id = {{1, "es"}};
     parser.fill_up({"/study/other.all.bw"});
     EXPECT_TRUE(parser.mm_ids.empty());
+}
+
+TEST(SampleMatching, OnlyOneFilePerKnownSampleIsRead)
+{
+    Parser parser("dummy_path", {"chr1"}, 1);
+    parser.rail_id_to_ext_id = {{1, "es"}, {2, "mes"}};
+    const auto accepted = parser.fill_up({"/study/es.all.bw", "/study/other.all.bw",
+                                          "/study/es.copy.bw", "/study/mes.all.bw"});
+    EXPECT_EQ(accepted, (std::vector<std::string>{"/study/es.all.bw", "/study/mes.all.bw"}));
 }
 
 TEST(Parser, ParsingStaysWithinTheRequestedCores)
