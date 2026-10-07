@@ -44,6 +44,10 @@ class Integrator
 
     double coverage_tolerance = 0.1;
     int position_tolerance = 5;
+    // When false, stitch_up emits every expressed region on its own. Exon
+    // edges are then never snapped to a splice site, since the snap
+    // coordinate comes from the junction that joined two regions.
+    bool stitching_enabled = true;
 
 
 };

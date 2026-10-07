@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <BedGraphRow.h>
 #include <cassert>
+#include <cctype>
 #include <algorithm>
 #include <thread>
 #include <atomic>
@@ -85,13 +86,6 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
         const char* start = p;
         while (p < end && (*p != ' ' && *p != '\t')) ++p;
         std::string_view chrom(start, p - start);
-        // column 1 has entries like chr1 or chr21 --> must have length 4 or 5
-
-        // skip line if it contains artificial chromosomes (such as chrUn_GL000218v1)
-        if (chrom.size() != 4 && chrom.size() != 5) {
-            continue;
-        }
-        row.chrom = std::string(chrom);
 
         // skip whitespace and tab
         while (p < end &&  (*p == ' ' || *p == '\t')) p++;
@@ -127,13 +121,26 @@ std::vector<BedGraphRow> Parser::read_bedgraph(const std::string& filename, uint
         }
         row.coverage = static_cast<float>(coverage_as_int);
 
+        // calculate total number of reads that map to this bp interval
+        row.length = row.end - row.start;
+        // end is not inclusive, since row1.end == row2.start of the next row
+        row.total_reads = static_cast<uint64_t>(row.length * row.coverage); //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
+
+        // Library size covers the whole file, not only the chromosomes in
+        // --chr. Summing over the selection instead would make the same
+        // --min-coverage a different absolute cutoff in every run. Artificial
+        // chromosomes (chrUn_GL000218v1 and the like) are part of the library
+        // too, so they are counted here and dropped below, where canonical
+        // names are the ones 4 or 5 characters long.
+        library_size += row.total_reads;
+
+        if (chrom.size() != 4 && chrom.size() != 5) {
+            continue;
+        }
+        row.chrom = std::string(chrom);
+
         // check if the row is part of the chromosome list passed by the user
         if (chromosomes_set.contains(row.chrom)){
-            // calculate total number of reads that map to this bp interval
-            row.length = row.end - row.start;
-            // end is not inclusive, since row1.end == row2.start of the next row
-            row.total_reads = row.length * row.coverage; //if start = 22, end = 25, coverage = 3 --> (25 - 22) * 3 = 3 * 3 = 9
-            library_size += row.total_reads;
             bedgraph.emplace_back(row);
         }
 
@@ -214,6 +221,12 @@ void Parser::read_mm(std::string filename) {
         {
             std::cerr << "[ERROR] could not open MM file " << filename << std::endl;
         }
+        // Read support per junction, summed over the loaded samples. Only
+        // filled when a threshold is set: at 8 bytes per junction this costs
+        // about 76 MB on the 9.5M junctions of a full hg38 RR file.
+        std::vector<uint64_t> junction_reads;
+        if (min_junction_reads > 0) junction_reads.assign(rr_all_sj.size(), 0);
+
         std::string line;
         bool seen_header = false;
         uint64_t nr_of_sj = 0;
@@ -225,7 +238,7 @@ void Parser::read_mm(std::string filename) {
         {
             ++count_lines;
             // read in line by line
-            if (line.empty()) return;
+            if (line.empty()) continue;
             if (line[0] == '%') continue;
             if (!seen_header) {
                 std::istringstream iss(line);
@@ -271,16 +284,44 @@ void Parser::read_mm(std::string filename) {
 
             // Look up the new (post-filter) sj_id via the remap built in
             // read_rr. A 0 means this junction was on a chromosome we don't
-            // analyse and was dropped — skip without ever touching rr_all_sj.
+            // analyse and was dropped, so skip without ever touching rr_all_sj.
             if (sj_id == 0 || sj_id - 1 >= sj_id_remap.size()) continue;
             const uint32_t new_sj_id = sj_id_remap[sj_id - 1];
             if (new_sj_id == 0) continue;
 
             if (mm_ids.contains(mm_id))
             {
+                if (min_junction_reads > 0)
+                {
+                    // Third column of the MatrixMarket triplet: reads
+                    // supporting this junction in this sample. res2 left p
+                    // before mm_id, so advance past it first.
+                    p = res2.ptr;
+                    while (p < end && (*p == ' ' || *p == '\t')) p++;
+                    unsigned int count = 0;
+                    if (std::from_chars(p, end, count).ec == std::errc{})
+                    {
+                        junction_reads[new_sj_id - 1] += count;
+                    }
+                }
                 // mm_chrom_sj stores *new* sj_ids (indexes into rr_all_sj).
                 mm_chrom_sj[rr_all_sj[new_sj_id - 1].chrom].emplace_back(new_sj_id);
             }
+        }
+
+        if (min_junction_reads > 0)
+        {
+            uint64_t dropped = 0;
+            for (auto& [chrom, ids] : mm_chrom_sj)
+            {
+                auto kept = std::remove_if(ids.begin(), ids.end(),
+                    [&](uint32_t id) { return junction_reads[id - 1] < min_junction_reads; });
+                dropped += static_cast<uint64_t>(std::distance(kept, ids.end()));
+                ids.erase(kept, ids.end());
+            }
+            std::cout << "[INFO] Dropped " << dropped
+                      << " junction entries below --min-junction-reads "
+                      << min_junction_reads << std::endl;
         }
         //std::cout << "[INFO] MM file contains " << count_lines << " lines"<< std::endl;
         //assert(sj_occ_in_samples <= count_lines);
@@ -324,35 +365,74 @@ void Parser::read_url_csv(std::string filename)
 
 // creates a map of rail_id to mm_id in rail_id_to_mm_id
 // bedgraph_files contains the file names of all samples
-void Parser::fill_up(std::vector<std::string> bedgraph_files)
+// True when external_id occurs in the file's base name as a whole token: the
+// character on either side, if any, is not alphanumeric. Directory names are
+// not searched, and "es" does not name "mes.all.bw".
+bool Parser::names_sample(const std::string& file, const std::string& external_id)
 {
-    //fill up rail_id_to_mm_id
+    if (external_id.empty()) return false;
+    const std::string base = std::filesystem::path(file).filename().string();
+    for (size_t at = base.find(external_id); at != std::string::npos;
+         at = base.find(external_id, at + 1))
+    {
+        const size_t after = at + external_id.size();
+        const bool free_before = at == 0 || !std::isalnum(static_cast<unsigned char>(base[at - 1]));
+        const bool free_after = after == base.size() || !std::isalnum(static_cast<unsigned char>(base[after]));
+        if (free_before && free_after) return true;
+    }
+    return false;
+}
+
+std::vector<std::string> Parser::fill_up(std::vector<std::string> bedgraph_files)
+{
+    std::vector<std::string> accepted_files;
+    for (auto& sample : rail_id_to_ext_id)
+    {
+        sample.second.erase(std::remove(sample.second.begin(), sample.second.end(), '"'),
+            sample.second.end());
+    }
+
+    // mm_id is the rank of the sample's rail id across the study, from 1.
     for (auto& bedgraph_file : bedgraph_files)
     {
-        // add the sample and its mm_id (= the rank of the rail id across the study, so all files in total) to rail_id_to_mm
-        // [&] references all necessary variables i.e. the required context (here: filename)
-        auto it = std::find_if(rail_id_to_ext_id.begin(), rail_id_to_ext_id.end(), [&](auto& sample)
+        // the external id is part of the filename for all three sources GTEX, TCGA and SRA.
+        // When several ids name the file, the longest one is the sample.
+        size_t best = rail_id_to_ext_id.size();
+        for (size_t i = 0; i < rail_id_to_ext_id.size(); ++i)
         {
-            // search for the external_id in rail_id_to_ext_id and then obtain the rail_id
-            // the external id is part of the filename for all three sources GTEX, TCGA and SRA
-	        sample.second.erase(std::remove(sample.second.begin(), sample.second.end(), '"'),
-	            sample.second.end());
-            return bedgraph_file.find(sample.second) != std::string::npos;
-        });
-        if (it != rail_id_to_ext_id.end())
-        {
-            unsigned int mm_id = std::distance(rail_id_to_ext_id.begin(), it) + 1; // std::distance counts the steps between two iterators --> mm_id is 1 too small, so add 1
-            mm_ids.insert(mm_id);
+            const std::string& external_id = rail_id_to_ext_id[i].second;
+            if (!names_sample(bedgraph_file, external_id)) continue;
+            if (best == rail_id_to_ext_id.size()
+                || external_id.size() > rail_id_to_ext_id[best].second.size())
+            {
+                best = i;
+            }
         }
-        else
+        if (best == rail_id_to_ext_id.size())
         {
             std::cerr << "[ERROR] File " << bedgraph_file << " has no rail_id! Check that the external_id is contained in the sample file name. " << std::endl;
+            continue;
         }
+        const unsigned int mm_id = best + 1;
+        if (!mm_ids.insert(mm_id).second)
+        {
+            std::cerr << "[ERROR] File " << bedgraph_file << " names sample "
+                      << rail_id_to_ext_id[best].second << ", which another file already does. " << std::endl;
+            continue;
+        }
+        accepted_files.emplace_back(bedgraph_file);
     }
+    return accepted_files;
+}
+
+unsigned int Parser::coverage_threads(unsigned int user_cores, unsigned int nof_samples) {
+    unsigned int available = user_cores > 1 ? user_cores - 1 : 1;
+    return std::max(1u, std::min(available, nof_samples));
 }
 
 void Parser::read_all_bedgraphs(std::vector<std::string> bedgraph_files, unsigned int nof_threads) {
-    std::cout << "[INFO] fastder is using " << nof_threads + 1 << " threads for parsing." << std::endl;
+    std::cout << "[INFO] fastder is using " << nof_threads + (user_cores > 1 ? 1 : 0)
+              << " threads for parsing." << std::endl;
     // reserve space
     all_bedgraphs.resize(bedgraph_files.size());
 
@@ -452,6 +532,32 @@ std::vector<BedGraphRow> Parser::read_bigwig(const std::string& filename, uint64
         return intervals;
     }
 
+    // Whole-file library size, as in read_bedgraph. The total summary holds
+    // this sum already, so no extra intervals are read. A file written without
+    // a summary block needs the full walk instead.
+    if (fp->hdr->summaryOffset != 0)
+    {
+        library_size += static_cast<uint64_t>(fp->hdr->sumData);
+    }
+    else
+    {
+        // Summed as a double and converted once, as the summary is.
+        double base_weighted_sum = 0.0;
+        for (int64_t k = 0; k < fp->cl->nKeys; ++k)
+        {
+            const std::string chrom = fp->cl->chrom[k];
+            bwOverlappingIntervals_t* o = bwGetOverlappingIntervals(
+                fp, const_cast<char*>(chrom.c_str()), 0, fp->cl->len[k]);
+            if (!o) continue;
+            for (uint32_t i = 0; i < o->l; ++i)
+            {
+                base_weighted_sum += static_cast<double>(o->end[i] - o->start[i]) * o->value[i];
+            }
+            bwDestroyOverlappingIntervals(o);
+        }
+        library_size += static_cast<uint64_t>(base_weighted_sum);
+    }
+
     // Iterate the BigWig's chromosomes. Skip any that the user did not
     // request via --chr (chromosomes_set), matching read_bedgraph's filter.
     for (int64_t k = 0; k < fp->cl->nKeys; ++k)
@@ -476,8 +582,7 @@ std::vector<BedGraphRow> Parser::read_bigwig(const std::string& filename, uint64
                             static_cast<double>(o->value[i]),
                             strand);
             row.length = static_cast<unsigned int>(row.end - row.start);
-            row.total_reads = static_cast<unsigned int>(row.length * row.coverage);
-            library_size += row.total_reads;
+            row.total_reads = static_cast<uint64_t>(row.length * row.coverage);
             intervals.emplace_back(std::move(row));
         }
         bwDestroyOverlappingIntervals(o);
@@ -550,21 +655,21 @@ void Parser::search_directory() {
 
     std::cout << "[INFO] The study contains " << rail_id_to_ext_id.size() << " samples. " << std::endl;
 
-    // fill up rail_id_to_mm_id mapping for all rail_ids provided by the user
-    fill_up(bedgraph_files);
+    // One file per known sample, so the mean and the junctions cover the same samples.
+    bedgraph_files = fill_up(bedgraph_files);
     std::cout << "[INFO] User provided " << mm_ids.size() << " samples." << std::endl;
 
     unsigned int nof_samples =  mm_ids.size();
-    unsigned int nof_threads = std::min(user_cores, nof_samples);
+    unsigned int nof_threads = coverage_threads(user_cores, nof_samples);
 
-    // launch separate thread to parse MM file
     std::cout << "[FILE] Processing MM File " << mm_file << std::endl;
-    std::thread mm_thread(&Parser::read_mm, this, mm_file);
-
-    // parse all bedgraph files concurrently
-    read_all_bedgraphs(bedgraph_files, nof_threads);
-
-    // stop MM thread
-    mm_thread.join();
+    if (user_cores > 1) {
+        std::thread mm_thread(&Parser::read_mm, this, mm_file);
+        read_all_bedgraphs(bedgraph_files, nof_threads);
+        mm_thread.join();
+    } else {
+        read_mm(mm_file);
+        read_all_bedgraphs(bedgraph_files, nof_threads);
+    }
 
 }

@@ -24,7 +24,9 @@ public:
     uint64_t start;
     uint64_t end;
     double coverage; // normalized coverage by CPM
-    unsigned int total_reads; // number of reads spanning across the bin, total_reads = length * coverage
+    // Sequenced bases in this bin, length * coverage. 64-bit: a long interval
+    // at high coverage overflows 32 bits.
+    uint64_t total_reads;
     unsigned int length;
     // strand is '.' for unstranded coverage (the default), '+' for plus-strand
     // BigWigs and '-' for minus-strand BigWigs. Keeping the field on every row
