@@ -2,48 +2,26 @@
 
 All notable changes to fastder are recorded in this file.
 
-## [Unreleased]
-
-### Fixed
-
-- `--min-junction-reads` rejects missing, negative or non-numeric values.
-- A blank MM line no longer skips the junction filter.
-- Unmatched and duplicate coverage files are not averaged.
-- BigWig library size without a summary truncates once.
-- Output name carries `--min-junction-reads` and `--no-stitch` when set.
-- Parsing uses at most `--cores` threads. The MM file takes one of them.
-- Coverage is normalized by the whole library, not by the chromosomes the run
-  loaded. `library_size` was summed only over the chromosomes named in
-  `--chr`, so the same `--min-coverage` was a different absolute cutoff in a
-  single-chromosome run than in a genome-wide one, and two runs on the same
-  sample could not be compared. Both readers now sum over the whole file: the
-  BedGraph reader accumulates before the chromosome filter, and the BigWig
-  reader takes the total from the file's summary header, which costs no extra
-  reads. Regions on unrequested chromosomes still never reach the output.
-- `BedGraphRow::total_reads` is 64-bit. It holds length times coverage, which
-  overflows 32 bits on a long interval at high coverage.
-- A coverage file is matched to its sample by the external id as a whole token
-  of the file's base name. The id was searched anywhere in the path, so
-  `mes.all.bw` was taken for sample `es`, and a directory name could match
-  too. A sample matched to the wrong file contributed no junctions.
-- Unit tests write their GTFs under the build tree. `tests/gtfs/` was tracked,
-  so each test run changed eleven files. The directory is removed.
+## [0.2.0] - 2026-10-16
 
 ### Added
 
-- `--min-junction-reads <int>`, the minimum read support a splice junction
-  needs, summed over the loaded samples, to be used for stitching. The MM file
-  carries this count per junction and sample; fastder parsed the column and
-  discarded it, so any junction seen in any sample was used, however weak.
-  Default 0 keeps that behaviour.
-- `--no-stitch`, which emits every expressed region on its own. Exon edges are
-  then never snapped to a splice site, because the snap coordinate comes from
-  the junction that joined two regions. Added to measure what junction
-  integration contributes.
+- `--min-junction-reads <int>`, minimum junction read support summed over samples. Default 0.
+- `--no-stitch`, one transcript per expressed region.
+- Output file name with `--min-junction-reads` and `--no-stitch` when set.
+- `--min-coverage` default of 0.005 CPM.
 
-### Changed
+### Fixed
 
-- `--min-coverage` defaults to 0.005 CPM.
+- Coverage normalized by the whole library, independent of `--chr`.
+- Coverage files matched to samples by a whole file name token.
+- Junction filter applied after a blank MM line.
+- No averaging of unmatched or duplicate coverage files.
+- Error on a missing, negative or non-numeric `--min-junction-reads`.
+- One rounding of the BigWig library size without a summary header.
+- At most `--cores` parsing threads.
+- 64-bit `BedGraphRow::total_reads`.
+- Test GTFs written under the build tree.
 
 ## [0.1.0] - 2026-05-19
 
