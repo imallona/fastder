@@ -2,6 +2,27 @@
 
 All notable changes to fastder are recorded in this file.
 
+## [0.2.0] - 2026-10-16
+
+### Added
+
+- `--min-junction-reads <int>`, minimum junction read support summed over samples. Default 0.
+- `--no-stitch`, one transcript per expressed region.
+- Output file name with `--min-junction-reads` and `--no-stitch` when set.
+- `--min-coverage` default of 0.005 CPM.
+
+### Fixed
+
+- Coverage normalized by the whole library, independent of `--chr`.
+- Coverage files matched to samples by a whole file name token.
+- Junction filter applied after a blank MM line.
+- No averaging of unmatched or duplicate coverage files.
+- Error on a missing, negative or non-numeric `--min-junction-reads`.
+- One rounding of the BigWig library size without a summary header.
+- At most `--cores` parsing threads.
+- 64-bit `BedGraphRow::total_reads`.
+- Test GTFs written under the build tree.
+
 ## [0.1.0] - 2026-05-19
 
 ### Fixed
