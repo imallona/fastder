@@ -2,6 +2,12 @@
 
 All notable changes to fastder are recorded in this file.
 
+## [0.2.1] - 2026-11-18
+
+### Fixed
+
+- Each minus-strand chain written once.
+
 ## [0.2.0] - 2026-10-16
 
 ### Added
