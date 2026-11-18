@@ -73,6 +73,7 @@ void Integrator::stitch_one_strand(const std::string& chrom,
 
     auto close_candidate = [&]()
     {
+        if (!have_candidate) return;
         if (candidate.er_ids.size() > 1)
         {
             output.emplace_back(candidate);
