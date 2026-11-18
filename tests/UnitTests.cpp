@@ -233,6 +233,34 @@ TEST(SpliceTestChromOne, FirstERNotStitchedRemainingERsStitched)
 
 }
 
+TEST(SpliceTestStrands, MinusChainBeforePlusChainEmittedOnce)
+{
+    std::vector<SJRow> rr_all_sj = {
+        SJRow("chr1", 1500, 2000, 500, '-', false),
+        SJRow("chr1", 3500, 4000, 500, '+', false),
+        SJRow("chr1", 4500, 5000, 500, '+', false),
+    };
+    std::unordered_map<std::string, std::vector<BedGraphRow>> expressed_regions;
+    expressed_regions["chr1"] = {
+        BedGraphRow("chr1", 1000, 1500, 10),
+        BedGraphRow("chr1", 2000, 2500, 10),
+        BedGraphRow("chr1", 3000, 3500, 20),
+        BedGraphRow("chr1", 4000, 4500, 20),
+        BedGraphRow("chr1", 5000, 5500, 20),
+    };
+    std::unordered_map<std::string, std::vector<uint32_t>> mm_chrom_sj;
+    mm_chrom_sj["chr1"] = {1, 2, 3};
+    Integrator integrator = Integrator(0.1, 5);
+    integrator.stitch_up(expressed_regions, mm_chrom_sj, rr_all_sj);
+
+    // ERs taken by the plus pass must not write the closed minus chain again
+    ASSERT_EQ(integrator.stitched_ERs.size(), 2);
+    EXPECT_EQ(integrator.stitched_ERs.at(0).strand, '-');
+    EXPECT_EQ(integrator.stitched_ERs.at(0).er_ids.size(), 3);
+    EXPECT_EQ(integrator.stitched_ERs.at(1).strand, '+');
+    EXPECT_EQ(integrator.stitched_ERs.at(1).er_ids.size(), 5);
+}
+
 TEST(SpliceTestChromOneAndTwo, BothChrHaveMatchingSJs)
 {
     // create splice junctions (ordered within a chromosome but NOT ordered by chromosome!
